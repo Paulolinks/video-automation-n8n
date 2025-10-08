@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import gc
 from moviepy.editor import *
 from whisper_timestamped import load_model, transcribe_timestamped
 
@@ -28,12 +29,19 @@ def sanitize_files(folder):
 
 sanitize_files(DIR)
 
-# 🟡 Gera legendas
+# 🟡 Gera legendas (otimizado para memória)
 def generate_subtitles():
+    print("🟡 Carregando modelo Whisper...")
     model = load_model("base")
+    print("🟡 Transcrevendo áudio...")
     result = transcribe_timestamped(model, AUDIO_PATH, language="pt")
+    
     with open(SUBS_PATH, "w") as f:
         json.dump(result["segments"], f, ensure_ascii=False, indent=2)
+    
+    # Limpa memória
+    del model
+    gc.collect()
 
 # 🔡 Formata segmentos
 def format_segments(path):
@@ -41,15 +49,19 @@ def format_segments(path):
         data = json.load(f)
     return [((seg["start"], seg["end"]), seg["text"]) for seg in data]
 
-# 🟨 Cria clipes de texto
+# 🟨 Cria clipes de texto (otimizado)
 def create_text_clips(segments, width):
     clips = []
     for (start, end), txt in segments:
-        txt_clip = TextClip(
-            txt, fontsize=72, color="yellow", font=FONT_NAME,
-            size=(width, None), method="caption", align="center"
-        ).set_position("center").set_start(start).set_end(end)
-        clips.append(txt_clip)
+        try:
+            txt_clip = TextClip(
+                txt, fontsize=72, color="yellow", font=FONT_NAME,
+                size=(width, None), method="caption", align="center"
+            ).set_position("center").set_start(start).set_end(end)
+            clips.append(txt_clip)
+        except Exception as e:
+            print(f"⚠️ Erro ao criar legenda: {e}")
+            continue
     return clips
 
 # ▶️ Execução
@@ -65,7 +77,6 @@ img_files = sorted([
     if f.lower().endswith((".jpg", ".jpeg", ".png"))
 ])
 
-
 if not img_files:
     raise ValueError("Nenhuma imagem encontrada para compor o vídeo.")
 
@@ -73,21 +84,62 @@ if not img_files:
 duration_total = subs[-1][0][1]
 img_duration = duration_total / len(img_files)
 
-# 🖼️ Cria clipes
-img_clips = [
-    ImageClip(img, duration=img_duration)
-    .resize(height=1920)
-    .on_color(size=(1080, 1920), color=(0, 0, 0), pos="center")
-    for img in img_files
-]
+print(f"🖼️ Processando {len(img_files)} imagens...")
 
+# 🖼️ Cria clipes (otimizado para memória)
+img_clips = []
+for i, img in enumerate(img_files):
+    try:
+        clip = ImageClip(img, duration=img_duration)
+        clip = clip.resize(height=1920)
+        clip = clip.on_color(size=(1080, 1920), color=(0, 0, 0), pos="center")
+        img_clips.append(clip)
+        
+        # Limpa memória a cada 5 imagens
+        if (i + 1) % 5 == 0:
+            gc.collect()
+            
+    except Exception as e:
+        print(f"⚠️ Erro ao processar imagem {img}: {e}")
+        continue
+
+if not img_clips:
+    raise ValueError("Nenhuma imagem válida foi processada.")
+
+print("🎬 Concatenando imagens...")
 background = concatenate_videoclips(img_clips, method="compose")
+
+# Limpa memória das imagens individuais
+del img_clips
+gc.collect()
+
+print("🟨 Criando legendas...")
 text_clips = create_text_clips(subs, width=900)
 
-# 🎬 Composição
+# 🎬 Composição final
+print("🎬 Compondo vídeo final...")
 final = CompositeVideoClip([background] + text_clips)
 final = final.set_audio(AudioFileClip(AUDIO_PATH))
 
+# Limpa memória
+del background
+del text_clips
+gc.collect()
+
 print("🎬 Renderizando...")
-final.write_videofile(VIDEO_PATH, fps=24)
+final.write_videofile(
+    VIDEO_PATH, 
+    fps=24,
+    codec='libx264',
+    audio_codec='aac',
+    temp_audiofile='temp-audio.m4a',
+    remove_temp=True,
+    verbose=False,
+    logger=None
+)
+
+# Limpa memória final
+del final
+gc.collect()
+
 print("✅ Finalizado:", VIDEO_PATH)
