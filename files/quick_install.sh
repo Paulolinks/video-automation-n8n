@@ -17,6 +17,7 @@ echo "📥 Baixando arquivos do GitHub..."
 cd /home/n8n
 git clone https://github.com/Paulolinks/video-automation-n8n.git temp_files
 cp -r temp_files/files/* /home/n8n/files/
+chown -R n8n:n8n /home/n8n/files
 rm -rf temp_files
 
 # 2. Executa instalação
