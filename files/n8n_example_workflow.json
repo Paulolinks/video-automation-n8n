@@ -1,0 +1,252 @@
+{
+  "name": "Criação Automática de Vídeos",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Agendamento",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": "SEU_GOOGLE_SHEET_ID",
+        "sheetName": "Conteúdos"
+      },
+      "id": "google-sheets",
+      "name": "Google Sheets - Conteúdos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "não",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-condition",
+      "name": "Se status = não",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://SEU_VPS_IP:5005/generate-audio",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "frase",
+              "value": "={{ $json.texto }}"
+            },
+            {
+              "name": "id",
+              "value": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-audio",
+      "name": "Gerar Áudio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://SEU_VPS_IP:5005/generate-video",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "frase",
+              "value": "={{ $json.texto }}"
+            },
+            {
+              "name": "id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "font",
+              "value": "Anton"
+            },
+            {
+              "name": "type",
+              "value": "images"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-video",
+      "name": "Gerar Vídeo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "filePropertyName": "data",
+        "binaryData": true,
+        "options": {
+          "folderId": "SEU_GOOGLE_DRIVE_FOLDER_ID"
+        }
+      },
+      "id": "upload-to-drive",
+      "name": "Upload para Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3.1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": "SEU_GOOGLE_SHEET_ID",
+        "sheetName": "Conteúdos",
+        "columnToMatchOn": "id",
+        "valueToMatchOn": "={{ $json.id }}",
+        "fieldsToSend": "defineBelow",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "status",
+              "value": "sim"
+            }
+          ]
+        }
+      },
+      "id": "update-status",
+      "name": "Atualizar Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [1560, 200]
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "google-sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "google-sheets": {
+      "main": [
+        [
+          {
+            "node": "if-condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if-condition": {
+      "main": [
+        [
+          {
+            "node": "generate-audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-audio": {
+      "main": [
+        [
+          {
+            "node": "generate-video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-video": {
+      "main": [
+        [
+          {
+            "node": "upload-to-drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload-to-drive": {
+      "main": [
+        [
+          {
+            "node": "update-status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

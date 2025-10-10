@@ -1,4 +1,13 @@
 __pycache__/
 *.log
-*.mp4
 *.srt
+
+# Ignorar vídeos gerados, exceto exemplos
+audio_*.wav
+video_*.mp4
+subs_*.json
+temp-*.m4a
+
+# Manter arquivos importantes
+!voice_sample.wav
+!final_video.mp4
