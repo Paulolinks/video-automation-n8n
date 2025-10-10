@@ -15,7 +15,7 @@ fi
 # 1. Baixa arquivos do GitHub
 echo "📥 Baixando arquivos do GitHub..."
 cd /home/n8n
-git clone https://github.com/SEU_USUARIO/SEU_REPO.git temp_files
+git clone https://github.com/Paulolinks/video-automation-n8n.git temp_files
 cp -r temp_files/files/* /home/n8n/files/
 rm -rf temp_files
 

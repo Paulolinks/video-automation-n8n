@@ -18,7 +18,7 @@ Sistema automatizado para criação de vídeos com:
 ### Opção 1: Instalação Super Rápida (Recomendado)
 ```bash
 # 1. Baixa e instala tudo de uma vez
-sudo curl -sSL https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPO/main/quick_install.sh | bash
+sudo curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/quick_install.sh | bash
 
 # 2. Copie seus arquivos
 scp voice_sample.wav root@seu_ip:/home/n8n/files/
@@ -28,8 +28,8 @@ scp -r fonts/* root@seu_ip:/home/n8n/files/fonts/
 ### Opção 2: Instalação Manual
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/SEU_USUARIO/SEU_REPO.git
-cd SEU_REPO/files
+git clone https://github.com/Paulolinks/video-automation-n8n.git
+cd video-automation-n8n/files
 
 # 2. Execute o instalador
 sudo chmod +x INSTALL_VPS.sh
