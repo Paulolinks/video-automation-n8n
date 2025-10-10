@@ -17,12 +17,16 @@ Sistema automatizado para criação de vídeos com:
 
 ### Opção 1: Instalação Super Rápida (Recomendado)
 ```bash
-# 1. Baixa e instala tudo de uma vez
+# 1. Limpa instalação anterior (se houver)
+sudo curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/cleanup.sh | bash
+
+# 2. Baixa e instala TUDO automaticamente (inclui fontes e áudio)
 sudo curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/quick_install.sh | bash
 
-# 2. Copie seus arquivos
-scp voice_sample.wav root@seu_ip:/home/n8n/files/
-scp -r fonts/* root@seu_ip:/home/n8n/files/fonts/
+# 3. Teste o sistema
+curl -X POST http://localhost:5005/create-video \
+  -H "Content-Type: application/json" \
+  -d '{"id": "teste001", "text": "Acredite no seu processo. Cada passo que você dá hoje aproxima você do seu próximo nível. Continue avançando sempre."}'
 ```
 
 ### Opção 2: Instalação Manual
