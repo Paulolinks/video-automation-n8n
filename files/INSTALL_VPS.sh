@@ -116,20 +116,8 @@ sudo -u n8n /opt/tts-env/bin/pip install flask==3.0.0
 echo "   - PyTorch..."
 sudo -u n8n /opt/tts-env/bin/pip install torch==2.5.0
 
-echo "   - Tokenizers (versão pré-compilada)..."
-sudo -u n8n /opt/tts-env/bin/pip install tokenizers==0.12.1
-
-echo "   - Transformers (compatível com tokenizers 0.12.1)..."
-sudo -u n8n /opt/tts-env/bin/pip install transformers==4.20.1
-
-echo "   - Instalando dependências do TTS..."
-sudo -u n8n /opt/tts-env/bin/pip install anyascii coqpit fsspec humanize matplotlib numpy packaging pyyaml scipy inflect librosa phonemizer pysbd tqdm
-
-echo "   - TTS (sem reinstalar dependências)..."
-sudo -u n8n /opt/tts-env/bin/pip install TTS --no-deps
-
-echo "   - Corrigindo dependências do TTS..."
-sudo -u n8n /opt/tts-env/bin/pip install gruut==2.2.3 gruut-ipa==0.12.0
+echo "   - TTS (com todas as dependências)..."
+sudo -u n8n /opt/tts-env/bin/pip install TTS
 
 echo "   - MoviePy..."
 sudo -u n8n /opt/tts-env/bin/pip install moviepy==1.0.3
