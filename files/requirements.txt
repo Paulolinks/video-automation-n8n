@@ -1,6 +1,6 @@
 flask==3.0.0
-torch==2.5.0
-TTS==0.22.0
 moviepy==1.0.3
 whisper-timestamped==1.14.2
+gTTS==2.4.0
+pydub==0.25.1
 

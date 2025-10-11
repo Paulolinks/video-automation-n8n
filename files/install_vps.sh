@@ -37,9 +37,22 @@ chmod 755 /files/imagens
 chmod 755 /files/videos
 chmod 755 /files/fonts
 
-# 5. Cria ambiente virtual
+# 5. Detecta versão do Python e cria ambiente virtual
+echo "🐍 Detectando versão do Python..."
+PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
+echo "📋 Versão do Python detectada: $PYTHON_VERSION"
+
+# Usa Python 3.11 se disponível, senão usa o padrão
+if command -v python3.11 >/dev/null 2>&1; then
+    echo "✅ Usando Python 3.11"
+    PYTHON_CMD="python3.11"
+else
+    echo "⚠️ Usando Python padrão ($PYTHON_VERSION)"
+    PYTHON_CMD="python3"
+fi
+
 echo "🐍 Criando ambiente virtual Python..."
-python3 -m venv /opt/tts-env
+sudo $PYTHON_CMD -m venv /opt/tts-env
 
 # 6. Ativa e instala dependências Python
 echo "📦 Instalando dependências Python..."
@@ -51,23 +64,23 @@ sudo /opt/tts-env/bin/pip install -r /home/n8n/files/requirements.txt
 
 # Verifica se as dependências foram instaladas
 echo "🔍 Verificando instalação das dependências..."
-if ! sudo /opt/tts-env/bin/pip list | grep -E "(flask|torch|TTS|moviepy)" > /dev/null; then
+if ! sudo /opt/tts-env/bin/pip list | grep -E "(flask|gTTS|moviepy)" > /dev/null; then
     echo "❌ Erro: Dependências não instaladas! Tentando fallback..."
     
     # Fallback: Instala dependências uma por uma
     echo "🔄 Fallback: Instalando dependências individualmente..."
     sudo /opt/tts-env/bin/pip install flask==3.0.0
-    sudo /opt/tts-env/bin/pip install torch==2.5.0
-    sudo /opt/tts-env/bin/pip install TTS==0.22.0
+    sudo /opt/tts-env/bin/pip install gTTS==2.4.0
     sudo /opt/tts-env/bin/pip install moviepy==1.0.3
     sudo /opt/tts-env/bin/pip install whisper-timestamped==1.14.2
+    sudo /opt/tts-env/bin/pip install pydub==0.25.1
     
     # Verifica novamente
-    if sudo /opt/tts-env/bin/pip list | grep -E "(flask|torch|TTS|moviepy)" > /dev/null; then
+    if sudo /opt/tts-env/bin/pip list | grep -E "(flask|gTTS|moviepy)" > /dev/null; then
         echo "✅ Fallback: Dependências instaladas com sucesso!"
     else
         echo "❌ Fallback falhou! Instalando versões mais recentes..."
-        sudo /opt/tts-env/bin/pip install flask torch TTS moviepy whisper-timestamped
+        sudo /opt/tts-env/bin/pip install flask gTTS moviepy whisper-timestamped pydub
     fi
 else
     echo "✅ Dependências instaladas com sucesso!"
@@ -85,7 +98,7 @@ Type=simple
 User=n8n
 Group=n8n
 WorkingDirectory=/home/n8n/files
-ExecStart=/opt/tts-env/bin/python3 /home/n8n/files/video_automation.py
+ExecStart=/opt/tts-env/bin/python3 /home/n8n/files/video_automation_simple.py
 Restart=always
 RestartSec=10
 Environment=PYTHONPATH=/home/n8n/files
@@ -128,11 +141,11 @@ fi
 
 # 12. Testa se o servidor Python funciona
 echo "🧪 Testando servidor Python..."
-if sudo -u n8n timeout 10 /opt/tts-env/bin/python3 /home/n8n/files/video_automation.py &>/dev/null; then
+if sudo -u n8n timeout 10 /opt/tts-env/bin/python3 /home/n8n/files/video_automation_simple.py &>/dev/null; then
     echo "✅ Servidor Python funciona!"
 else
     echo "❌ Erro no servidor Python! Verificando dependências..."
-    sudo /opt/tts-env/bin/pip list | grep -E "(flask|torch|TTS|moviepy)" || echo "❌ Dependências em falta!"
+    sudo /opt/tts-env/bin/pip list | grep -E "(flask|gTTS|moviepy)" || echo "❌ Dependências em falta!"
 fi
 
 echo ""
