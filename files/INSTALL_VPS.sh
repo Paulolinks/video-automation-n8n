@@ -58,7 +58,14 @@ apt install -y ffmpeg espeak-ng
 apt install -y curl wget git build-essential
 apt install -y libsndfile1 libsndfile1-dev
 apt install -y portaudio19-dev
-apt install -y rustc cargo  # Para compilar tokenizers
+# Instala Rust mais recente via rustup
+echo "🦀 Instalando Rust mais recente..."
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source ~/.cargo/env
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Instala Rust para usuário n8n também
+sudo -u n8n bash -c "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
 
 # 4. Cria usuário n8n se não existir
 echo "👤 Configurando usuário n8n..."
@@ -130,8 +137,18 @@ echo "🔧 Corrigindo compatibilidade TTS..."
 if ! sudo -u n8n /opt/tts-env/bin/python3 -c "from TTS.api import TTS" 2>/dev/null; then
     echo "   - Instalando dependências compatíveis..."
     
+    # Configura PATH do Rust para usuário n8n
+    export PATH="/home/n8n/.cargo/bin:$PATH"
+    
     # Tenta instalar tokenizers pré-compilado primeiro
-    sudo -u n8n /opt/tts-env/bin/pip install --only-binary=all tokenizers
+    echo "   - Tentando tokenizers pré-compilado..."
+    sudo -u n8n bash -c "export PATH=/home/n8n/.cargo/bin:\$PATH && /opt/tts-env/bin/pip install --only-binary=all tokenizers" || {
+        echo "   - Tokenizers pré-compilado falhou, tentando versão mais antiga..."
+        sudo -u n8n /opt/tts-env/bin/pip install "tokenizers<0.15.0" || {
+            echo "   - Versão antiga falhou, compilando com Rust..."
+            sudo -u n8n bash -c "export PATH=/home/n8n/.cargo/bin:\$PATH && /opt/tts-env/bin/pip install tokenizers"
+        }
+    }
     
     # Instala transformers compatível
     sudo -u n8n /opt/tts-env/bin/pip install transformers==4.21.0
