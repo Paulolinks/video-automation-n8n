@@ -58,25 +58,6 @@ apt install -y ffmpeg espeak-ng
 apt install -y curl wget git build-essential
 apt install -y libsndfile1 libsndfile1-dev
 apt install -y portaudio19-dev
-# Remove Rust antigo do apt
-echo "🗑️ Removendo Rust antigo..."
-apt remove -y rustc cargo || true
-
-# Instala Rust mais recente via rustup
-echo "🦀 Instalando Rust mais recente via rustup..."
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-source ~/.cargo/env
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# Verifica versão do Rust
-rustc --version || echo "Rust não encontrado no PATH"
-
-# Instala Rust para usuário n8n também
-echo "🦀 Instalando Rust para usuário n8n..."
-sudo -u n8n bash -c "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable"
-
-# Atualiza Rust para versão mais recente
-sudo -u n8n bash -c "source ~/.cargo/env && rustup update stable"
 
 # 4. Cria usuário n8n se não existir
 echo "👤 Configurando usuário n8n..."
@@ -126,54 +107,35 @@ fi
 echo "📦 Atualizando pip..."
 sudo -u n8n /opt/tts-env/bin/pip install --upgrade pip
 
-# 9. Instala dependências Python
-echo "📦 Instalando dependências Python..."
+# 9. Instala dependências Python NA ORDEM CORRETA
+echo "📦 Instalando dependências Python com versões compatíveis..."
+
 echo "   - Flask..."
 sudo -u n8n /opt/tts-env/bin/pip install flask==3.0.0
 
 echo "   - PyTorch..."
 sudo -u n8n /opt/tts-env/bin/pip install torch==2.5.0
 
-echo "   - TTS (pode demorar)..."
-sudo -u n8n /opt/tts-env/bin/pip install TTS
+echo "   - Tokenizers (versão pré-compilada compatível)..."
+sudo -u n8n /opt/tts-env/bin/pip install tokenizers==0.13.3
+
+echo "   - Transformers (compatível com tokenizers 0.13.3)..."
+sudo -u n8n /opt/tts-env/bin/pip install transformers==4.21.0
+
+echo "   - Instalando dependências do TTS..."
+sudo -u n8n /opt/tts-env/bin/pip install anyascii coqpit fsspec humanize matplotlib numpy packaging pyyaml scipy inflect librosa phonemizer pysbd tqdm
+
+echo "   - TTS (sem reinstalar dependências)..."
+sudo -u n8n /opt/tts-env/bin/pip install TTS --no-deps
+
+echo "   - Corrigindo dependências do TTS..."
+sudo -u n8n /opt/tts-env/bin/pip install gruut==2.2.3 gruut-ipa==0.12.0
 
 echo "   - MoviePy..."
 sudo -u n8n /opt/tts-env/bin/pip install moviepy==1.0.3
 
 echo "   - Whisper..."
 sudo -u n8n /opt/tts-env/bin/pip install whisper-timestamped==1.14.2
-
-# 9.5. Corrige compatibilidade TTS + transformers
-echo "🔧 Corrigindo compatibilidade TTS..."
-if ! sudo -u n8n /opt/tts-env/bin/python3 -c "from TTS.api import TTS" 2>/dev/null; then
-    echo "   - Instalando dependências compatíveis..."
-    
-    # Configura PATH do Rust para usuário n8n
-    export PATH="/home/n8n/.cargo/bin:$PATH"
-    
-    # Tenta instalar tokenizers pré-compilado primeiro
-    echo "   - Tentando tokenizers pré-compilado..."
-    sudo -u n8n bash -c "export PATH=/home/n8n/.cargo/bin:\$PATH && /opt/tts-env/bin/pip install --only-binary=all tokenizers" || {
-        echo "   - Tokenizers pré-compilado falhou, tentando versão mais antiga..."
-        sudo -u n8n /opt/tts-env/bin/pip install "tokenizers<0.15.0" || {
-            echo "   - Versão antiga falhou, limpando cache e compilando com Rust atualizado..."
-            # Remove cache corrompido do cargo
-            sudo -u n8n rm -rf /home/n8n/.cargo/registry
-            # Compila com Rust atualizado
-            sudo -u n8n bash -c "source /home/n8n/.cargo/env && /opt/tts-env/bin/pip install tokenizers"
-        }
-    }
-    
-    # Instala transformers compatível
-    sudo -u n8n /opt/tts-env/bin/pip install transformers==4.21.0
-    
-    # Se ainda não funcionar, reinstala TTS mais recente
-    if ! sudo -u n8n /opt/tts-env/bin/python3 -c "from TTS.api import TTS" 2>/dev/null; then
-        echo "   - Reinstalando TTS com versão mais recente..."
-        sudo -u n8n /opt/tts-env/bin/pip uninstall TTS -y
-        sudo -u n8n /opt/tts-env/bin/pip install TTS
-    fi
-fi
 
 # 10. Verifica instalação das dependências
 echo "🔍 Verificando instalação..."
