@@ -58,14 +58,25 @@ apt install -y ffmpeg espeak-ng
 apt install -y curl wget git build-essential
 apt install -y libsndfile1 libsndfile1-dev
 apt install -y portaudio19-dev
+# Remove Rust antigo do apt
+echo "🗑️ Removendo Rust antigo..."
+apt remove -y rustc cargo || true
+
 # Instala Rust mais recente via rustup
-echo "🦀 Instalando Rust mais recente..."
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+echo "🦀 Instalando Rust mais recente via rustup..."
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
 source ~/.cargo/env
 export PATH="$HOME/.cargo/bin:$PATH"
 
+# Verifica versão do Rust
+rustc --version || echo "Rust não encontrado no PATH"
+
 # Instala Rust para usuário n8n também
-sudo -u n8n bash -c "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+echo "🦀 Instalando Rust para usuário n8n..."
+sudo -u n8n bash -c "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable"
+
+# Atualiza Rust para versão mais recente
+sudo -u n8n bash -c "source ~/.cargo/env && rustup update stable"
 
 # 4. Cria usuário n8n se não existir
 echo "👤 Configurando usuário n8n..."
@@ -145,8 +156,11 @@ if ! sudo -u n8n /opt/tts-env/bin/python3 -c "from TTS.api import TTS" 2>/dev/nu
     sudo -u n8n bash -c "export PATH=/home/n8n/.cargo/bin:\$PATH && /opt/tts-env/bin/pip install --only-binary=all tokenizers" || {
         echo "   - Tokenizers pré-compilado falhou, tentando versão mais antiga..."
         sudo -u n8n /opt/tts-env/bin/pip install "tokenizers<0.15.0" || {
-            echo "   - Versão antiga falhou, compilando com Rust..."
-            sudo -u n8n bash -c "export PATH=/home/n8n/.cargo/bin:\$PATH && /opt/tts-env/bin/pip install tokenizers"
+            echo "   - Versão antiga falhou, limpando cache e compilando com Rust atualizado..."
+            # Remove cache corrompido do cargo
+            sudo -u n8n rm -rf /home/n8n/.cargo/registry
+            # Compila com Rust atualizado
+            sudo -u n8n bash -c "source /home/n8n/.cargo/env && /opt/tts-env/bin/pip install tokenizers"
         }
     }
     
