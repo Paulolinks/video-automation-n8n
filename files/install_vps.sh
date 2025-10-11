@@ -43,9 +43,35 @@ python3 -m venv /opt/tts-env
 
 # 6. Ativa e instala dependências Python
 echo "📦 Instalando dependências Python..."
-source /opt/tts-env/bin/activate
-pip install --upgrade pip
-pip install -r /home/n8n/files/requirements.txt
+sudo /opt/tts-env/bin/pip install --upgrade pip
+
+# Tenta instalar dependências com fallback
+echo "📦 Instalando dependências principais..."
+sudo /opt/tts-env/bin/pip install -r /home/n8n/files/requirements.txt
+
+# Verifica se as dependências foram instaladas
+echo "🔍 Verificando instalação das dependências..."
+if ! sudo /opt/tts-env/bin/pip list | grep -E "(flask|torch|TTS|moviepy)" > /dev/null; then
+    echo "❌ Erro: Dependências não instaladas! Tentando fallback..."
+    
+    # Fallback: Instala dependências uma por uma
+    echo "🔄 Fallback: Instalando dependências individualmente..."
+    sudo /opt/tts-env/bin/pip install flask==3.0.0
+    sudo /opt/tts-env/bin/pip install torch==2.5.0
+    sudo /opt/tts-env/bin/pip install TTS==0.22.0
+    sudo /opt/tts-env/bin/pip install moviepy==1.0.3
+    sudo /opt/tts-env/bin/pip install whisper-timestamped==1.14.2
+    
+    # Verifica novamente
+    if sudo /opt/tts-env/bin/pip list | grep -E "(flask|torch|TTS|moviepy)" > /dev/null; then
+        echo "✅ Fallback: Dependências instaladas com sucesso!"
+    else
+        echo "❌ Fallback falhou! Instalando versões mais recentes..."
+        sudo /opt/tts-env/bin/pip install flask torch TTS moviepy whisper-timestamped
+    fi
+else
+    echo "✅ Dependências instaladas com sucesso!"
+fi
 
 # 7. Cria serviço systemd
 echo "⚙️ Configurando serviço systemd..."
@@ -98,6 +124,15 @@ if [ -d "/home/n8n/files/imagens" ] && [ -d "/home/n8n/files/videos" ]; then
     echo "✅ Pastas criadas com sucesso"
 else
     echo "❌ Erro ao criar pastas"
+fi
+
+# 12. Testa se o servidor Python funciona
+echo "🧪 Testando servidor Python..."
+if sudo -u n8n timeout 10 /opt/tts-env/bin/python3 /home/n8n/files/video_automation.py &>/dev/null; then
+    echo "✅ Servidor Python funciona!"
+else
+    echo "❌ Erro no servidor Python! Verificando dependências..."
+    sudo /opt/tts-env/bin/pip list | grep -E "(flask|torch|TTS|moviepy)" || echo "❌ Dependências em falta!"
 fi
 
 echo ""
