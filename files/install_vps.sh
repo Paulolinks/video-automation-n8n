@@ -23,10 +23,19 @@ echo "📁 Criando estrutura de pastas..."
 mkdir -p /home/n8n/files/imagens
 mkdir -p /home/n8n/files/videos
 mkdir -p /home/n8n/files/fonts
+mkdir -p /files/imagens
+mkdir -p /files/videos
+mkdir -p /files/fonts
+
+# Configura permissões para N8n
 chown -R n8n:n8n /home/n8n/files
+chown -R n8n:n8n /files
 chmod 755 /home/n8n/files/imagens
 chmod 755 /home/n8n/files/videos
 chmod 755 /home/n8n/files/fonts
+chmod 755 /files/imagens
+chmod 755 /files/videos
+chmod 755 /files/fonts
 
 # 5. Cria ambiente virtual
 echo "🐍 Criando ambiente virtual Python..."
