@@ -3,5 +3,4 @@ torch==2.5.0
 TTS
 moviepy==1.0.3
 whisper-timestamped==1.14.2
-transformers==4.21.0
 

@@ -58,6 +58,7 @@ apt install -y ffmpeg espeak-ng
 apt install -y curl wget git build-essential
 apt install -y libsndfile1 libsndfile1-dev
 apt install -y portaudio19-dev
+apt install -y rustc cargo  # Para compilar tokenizers
 
 # 4. Cria usuário n8n se não existir
 echo "👤 Configurando usuário n8n..."
@@ -127,7 +128,12 @@ sudo -u n8n /opt/tts-env/bin/pip install whisper-timestamped==1.14.2
 # 9.5. Corrige compatibilidade TTS + transformers
 echo "🔧 Corrigindo compatibilidade TTS..."
 if ! sudo -u n8n /opt/tts-env/bin/python3 -c "from TTS.api import TTS" 2>/dev/null; then
-    echo "   - Instalando transformers compatível..."
+    echo "   - Instalando dependências compatíveis..."
+    
+    # Tenta instalar tokenizers pré-compilado primeiro
+    sudo -u n8n /opt/tts-env/bin/pip install --only-binary=all tokenizers
+    
+    # Instala transformers compatível
     sudo -u n8n /opt/tts-env/bin/pip install transformers==4.21.0
     
     # Se ainda não funcionar, reinstala TTS mais recente
