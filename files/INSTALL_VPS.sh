@@ -39,8 +39,8 @@ if ! command -v python3.11 >/dev/null 2>&1; then
     add-apt-repository ppa:deadsnakes/ppa -y
     apt update
     
-    # Instalar Python 3.11
-    apt install -y python3.11 python3.11-venv python3.11-pip python3.11-dev
+    # Instalar Python 3.11 (pip é independente)
+    apt install -y python3.11 python3.11-venv python3.11-dev python3-pip
     
     if ! command -v python3.11 >/dev/null 2>&1; then
         echo "❌ ERRO CRÍTICO: Falha ao instalar Python 3.11"
