@@ -11,6 +11,7 @@
 # ========================================
 
 set -e  # Para na primeira falha
+trap 'echo "❌ ERRO na linha $LINENO"; exit 1' ERR
 
 echo "================================"
 echo "🎬 VIDEO AUTOMATION - INSTALLER"
@@ -28,15 +29,37 @@ echo "🔄 Atualizando sistema..."
 apt update -y
 apt upgrade -y
 
-# 2. Instala dependências do sistema
+# 2. Instala Python 3.11 se necessário
+echo "🐍 Verificando Python 3.11..."
+if ! command -v python3.11 >/dev/null 2>&1; then
+    echo "📥 Python 3.11 não encontrado, instalando via PPA deadsnakes..."
+    
+    # Adicionar repositório deadsnakes
+    apt install -y software-properties-common
+    add-apt-repository ppa:deadsnakes/ppa -y
+    apt update
+    
+    # Instalar Python 3.11
+    apt install -y python3.11 python3.11-venv python3.11-pip python3.11-dev
+    
+    if ! command -v python3.11 >/dev/null 2>&1; then
+        echo "❌ ERRO CRÍTICO: Falha ao instalar Python 3.11"
+        exit 1
+    fi
+else
+    echo "✅ Python 3.11 já instalado"
+fi
+
+echo "✅ Python 3.11: $(python3.11 --version)"
+
+# 3. Instala dependências do sistema
 echo "📦 Instalando dependências do sistema..."
-apt install -y python3.11 python3.11-venv python3.11-pip python3.11-dev
 apt install -y ffmpeg espeak-ng
 apt install -y curl wget git build-essential
 apt install -y libsndfile1 libsndfile1-dev
-apt install -y portaudio19-dev python3.11-pyaudio
+apt install -y portaudio19-dev
 
-# 3. Cria usuário n8n se não existir
+# 4. Cria usuário n8n se não existir
 echo "👤 Configurando usuário n8n..."
 if ! id "n8n" &>/dev/null; then
     useradd -m -s /bin/bash n8n
@@ -45,7 +68,7 @@ else
     echo "✅ Usuário n8n já existe"
 fi
 
-# 4. Cria diretórios necessários
+# 5. Cria diretórios necessários
 echo "📁 Criando diretórios..."
 mkdir -p /home/n8n/files/imagens
 mkdir -p /home/n8n/files/videos
@@ -54,7 +77,7 @@ mkdir -p /files/imagens
 mkdir -p /files/videos
 mkdir -p /files/fonts
 
-# 5. Configura permissões
+# 6. Configura permissões
 echo "🔐 Configurando permissões..."
 chown -R n8n:n8n /home/n8n/files
 chown -R n8n:n8n /files
@@ -65,22 +88,20 @@ chmod 755 /files/imagens
 chmod 755 /files/videos
 chmod 755 /files/fonts
 
-# 6. Força uso do Python 3.11
-echo "🐍 Configurando Python 3.11..."
-PYTHON_311_PATH=$(which python3.11)
-if [ -z "$PYTHON_311_PATH" ]; then
-    echo "❌ Python 3.11 não encontrado! Instalando..."
-    apt install -y python3.11 python3.11-venv python3.11-pip
-    PYTHON_311_PATH=$(which python3.11)
-fi
-
-echo "✅ Python 3.11 encontrado: $PYTHON_311_PATH"
-
-# 7. Cria ambiente virtual com Python 3.11
+# 7. Cria ambiente virtual com Python 3.11 FORÇADO
 echo "🐍 Criando ambiente virtual Python 3.11..."
 rm -rf /opt/tts-env
-$PYTHON_311_PATH -m venv /opt/tts-env
+python3.11 -m venv /opt/tts-env
 chown -R n8n:n8n /opt/tts-env
+
+# Verifica versão dentro do venv
+VENV_PYTHON_VERSION=$(/opt/tts-env/bin/python3 --version)
+echo "✅ Ambiente virtual: $VENV_PYTHON_VERSION"
+
+if [[ ! "$VENV_PYTHON_VERSION" =~ "3.11" ]]; then
+    echo "❌ ERRO: Ambiente virtual não está usando Python 3.11"
+    exit 1
+fi
 
 # 8. Atualiza pip
 echo "📦 Atualizando pip..."
@@ -94,7 +115,7 @@ sudo -u n8n /opt/tts-env/bin/pip install flask==3.0.0
 echo "   - PyTorch..."
 sudo -u n8n /opt/tts-env/bin/pip install torch==2.5.0
 
-echo "   - TTS (pode demorar)..."
+echo "   - TTS 0.22.0 (pode demorar)..."
 sudo -u n8n /opt/tts-env/bin/pip install TTS==0.22.0
 
 echo "   - MoviePy..."
@@ -105,6 +126,10 @@ sudo -u n8n /opt/tts-env/bin/pip install whisper-timestamped==1.14.2
 
 # 10. Verifica instalação das dependências
 echo "🔍 Verificando instalação..."
+echo "   - Python: $(python3.11 --version)"
+echo "   - Pip: $(/opt/tts-env/bin/pip --version)"
+echo "   - Ambiente: /opt/tts-env"
+
 MISSING_DEPS=()
 
 if ! sudo -u n8n /opt/tts-env/bin/python3 -c "import flask" 2>/dev/null; then
