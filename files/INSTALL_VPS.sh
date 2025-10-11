@@ -115,14 +115,28 @@ sudo -u n8n /opt/tts-env/bin/pip install flask==3.0.0
 echo "   - PyTorch..."
 sudo -u n8n /opt/tts-env/bin/pip install torch==2.5.0
 
-echo "   - TTS 0.22.0 (pode demorar)..."
-sudo -u n8n /opt/tts-env/bin/pip install TTS==0.22.0
+echo "   - TTS (pode demorar)..."
+sudo -u n8n /opt/tts-env/bin/pip install TTS
 
 echo "   - MoviePy..."
 sudo -u n8n /opt/tts-env/bin/pip install moviepy==1.0.3
 
 echo "   - Whisper..."
 sudo -u n8n /opt/tts-env/bin/pip install whisper-timestamped==1.14.2
+
+# 9.5. Corrige compatibilidade TTS + transformers
+echo "🔧 Corrigindo compatibilidade TTS..."
+if ! sudo -u n8n /opt/tts-env/bin/python3 -c "from TTS.api import TTS" 2>/dev/null; then
+    echo "   - Instalando transformers compatível..."
+    sudo -u n8n /opt/tts-env/bin/pip install transformers==4.21.0
+    
+    # Se ainda não funcionar, reinstala TTS mais recente
+    if ! sudo -u n8n /opt/tts-env/bin/python3 -c "from TTS.api import TTS" 2>/dev/null; then
+        echo "   - Reinstalando TTS com versão mais recente..."
+        sudo -u n8n /opt/tts-env/bin/pip uninstall TTS -y
+        sudo -u n8n /opt/tts-env/bin/pip install TTS
+    fi
+fi
 
 # 10. Verifica instalação das dependências
 echo "🔍 Verificando instalação..."
