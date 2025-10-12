@@ -1,6 +1,9 @@
 flask==3.0.0
-torch==2.5.0
-TTS
+torch==2.1.0
+torchaudio==2.1.0
+TTS==0.22.0
+transformers==4.33.0
 moviepy==1.0.3
 whisper-timestamped==1.14.2
-
+librosa
+soundfile

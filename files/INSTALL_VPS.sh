@@ -113,8 +113,8 @@ echo "📦 Instalando dependências Python com versões compatíveis..."
 echo "   - Flask..."
 sudo -u n8n /opt/tts-env/bin/pip install flask==3.0.0
 
-echo "   - PyTorch..."
-sudo -u n8n /opt/tts-env/bin/pip install torch==2.5.0
+echo "   - PyTorch 2.1 (compatível com XTTS_v2)..."
+sudo -u n8n /opt/tts-env/bin/pip install torch==2.1.0 torchaudio==2.1.0
 
 echo "   - TTS (com todas as dependências)..."
 sudo -u n8n /opt/tts-env/bin/pip install TTS
