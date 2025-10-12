@@ -20,7 +20,11 @@ def run_command(command, description):
     """Executa comando e mostra resultado"""
     print(f"🔄 {description}...")
     try:
-        result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+        # Para Windows, usa lista em vez de string
+        if platform.system() == "Windows" and isinstance(command, str):
+            result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+        else:
+            result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
         print(f"✅ {description} - OK")
         return True
     except subprocess.CalledProcessError as e:
@@ -69,7 +73,6 @@ def get_pip_command():
 def install_dependencies():
     """Instala dependências Python"""
     print("\n📦 Instalando dependências Python...")
-    pip_cmd = get_pip_command()
     
     dependencies = [
         ("flask==3.0.0", "Flask"),
@@ -80,8 +83,20 @@ def install_dependencies():
         ("imageio-ffmpeg", "FFmpeg para MoviePy")
     ]
     
+    # Instala cada dependência individualmente
     for package, name in dependencies:
-        if not run_command(f'"{pip_cmd}" install {package}', f"Instalar {name}"):
+        print(f"🔄 Instalando {name}...")
+        try:
+            if platform.system() == "Windows":
+                cmd = ["venv\\Scripts\\python.exe", "-m", "pip", "install", package]
+            else:
+                cmd = ["venv/bin/python", "-m", "pip", "install", package]
+            
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            print(f"✅ {name} - OK")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ {name} - ERRO")
+            print(f"   Erro: {e.stderr}")
             print(f"⚠️  Falha ao instalar {name}, continuando...")
     
     print("✅ Dependências instaladas")
@@ -106,8 +121,6 @@ def test_imports():
     """Testa importações Python"""
     print("\n🔍 Testando importações...")
     
-    python_cmd = "venv\\Scripts\\python.exe" if platform.system() == "Windows" else "venv/bin/python"
-    
     tests = [
         ("import flask", "Flask"),
         ("import torch", "PyTorch"),
@@ -118,10 +131,18 @@ def test_imports():
     
     all_ok = True
     for test_code, name in tests:
-        if run_command(f'"{python_cmd}" -c "{test_code}"', f"Testar {name}"):
+        print(f"🔄 Testando {name}...")
+        try:
+            if platform.system() == "Windows":
+                cmd = ["venv\\Scripts\\python.exe", "-c", test_code]
+            else:
+                cmd = ["venv/bin/python", "-c", test_code]
+            
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
             print(f"✅ {name} - OK")
-        else:
+        except subprocess.CalledProcessError as e:
             print(f"❌ {name} - FALHOU")
+            print(f"   Erro: {e.stderr}")
             all_ok = False
     
     return all_ok
