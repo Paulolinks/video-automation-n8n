@@ -18,33 +18,40 @@
 ### **Passo 1: Instalar dependências**
 ```cmd
 # Execute o script de instalação
-setup_local.bat
+python setup_local.py
 ```
 
 **O que faz:**
 - ✅ Cria ambiente virtual Python
 - ✅ Instala Flask, PyTorch, TTS, MoviePy, Whisper
 - ✅ Testa todas as importações
+- ✅ Cria pastas necessárias
 
 ---
 
 ## 🧪 **TESTES LOCAIS**
 
-### **Teste 1: Teste Rápido (Sem Servidor)**
+### **Teste 1: Teste Direto (Sem Servidor)**
 ```cmd
 # Testa criação de vídeo diretamente
-quick_test.bat
+python test_video.py
 ```
 
 **Resultado esperado:**
-- ✅ Arquivo `videos\video_teste_local_001.mp4` criado
+- ✅ Arquivo `videos/video_teste_local_001.mp4` criado
 - ✅ Áudio com voice cloning
 - ✅ Legendas automáticas
 
-### **Teste 2: Servidor Completo**
+### **Teste 2: Teste Manual**
+```cmd
+# Teste direto do create_video.py
+venv\Scripts\python.exe create_video.py "Seu texto aqui" "teste_manual"
+```
+
+### **Teste 3: Servidor Completo**
 ```cmd
 # Inicia servidor Flask
-test_local.bat
+venv\Scripts\python.exe server.py
 ```
 
 **Em outro terminal:**
