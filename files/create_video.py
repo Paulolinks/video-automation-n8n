@@ -134,8 +134,10 @@ def create_video_composition(audio_path, video_id):
     # Sanitiza nomes de arquivos de imagem
     sanitize_image_files()
     
-    # Gera legendas
-    segments = generate_subtitles(audio_path, subs_path)
+    # Gera legendas (DESABILITADO - Whisper trava o processo)
+    # segments = generate_subtitles(audio_path, subs_path)
+    segments = []  # Sem legendas por enquanto
+    print("⚠️ Legendas desabilitadas temporariamente (Whisper causa timeout)")
     
     # Carrega imagens válidas
     img_files = sorted([
