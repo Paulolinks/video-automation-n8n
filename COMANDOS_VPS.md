@@ -3,20 +3,25 @@
 ## ⚡ CORREÇÃO RÁPIDA (Aplicar no VPS que já está instalado)
 
 ```bash
-# 1. Corrigir transformers (para XTTS_v2 funcionar)
-sudo -u n8n /opt/tts-env/bin/pip uninstall -y transformers
+# 1. Corrigir PyTorch e Transformers (para XTTS_v2 funcionar)
+sudo -u n8n /opt/tts-env/bin/pip uninstall -y torch torchaudio transformers
+sudo -u n8n /opt/tts-env/bin/pip install torch==2.1.0 torchaudio==2.1.0
 sudo -u n8n /opt/tts-env/bin/pip install transformers==4.33.0
 
-# 2. Reiniciar serviço
+# 2. Reinstalar TTS
+sudo -u n8n /opt/tts-env/bin/pip install --force-reinstall --no-deps TTS
+sudo -u n8n /opt/tts-env/bin/pip install TTS
+
+# 3. Reiniciar serviço
 sudo systemctl restart video-automation
 
-# 3. Aguardar 5 segundos
+# 4. Aguardar 5 segundos
 sleep 5
 
-# 4. Verificar se está rodando
+# 5. Verificar se está rodando
 sudo systemctl status video-automation
 
-# 5. Testar saúde do servidor
+# 6. Testar saúde do servidor
 curl http://localhost:5005/health
 ```
 
