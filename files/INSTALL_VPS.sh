@@ -125,6 +125,13 @@ sudo -u n8n /opt/tts-env/bin/pip install moviepy==1.0.3
 echo "   - Whisper..."
 sudo -u n8n /opt/tts-env/bin/pip install whisper-timestamped==1.14.2
 
+# 9.1. CORREÇÃO CRÍTICA: Instala versão correta do transformers para XTTS_v2
+echo "   - Corrigindo transformers para compatibilidade com XTTS_v2..."
+sudo -u n8n /opt/tts-env/bin/pip uninstall -y transformers 2>/dev/null || true
+sudo -u n8n /opt/tts-env/bin/pip install transformers==4.33.0
+
+echo "✅ Transformers 4.33.0 instalado (compatível com XTTS_v2)"
+
 # 10. Verifica instalação das dependências
 echo "🔍 Verificando instalação..."
 echo "   - Python: $(python3.11 --version)"
