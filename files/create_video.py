@@ -1,24 +1,40 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Script para gerar vídeo com legendas a partir de áudio e imagens
+Uso: python3 create_video.py "<video_id>"
+"""
+
 import sys
 import os
 import json
-from TTS.api import TTS
 from moviepy.editor import *
-from whisper_timestamped import load_model, transcribe_timestamped
+import whisper_timestamped as whisper
 
 # ========================================
 # CONFIGURAÇÕES
 # ========================================
 
-# Diretórios
-BASE_DIR = "/home/n8n/files"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AUDIOS_DIR = os.path.join(BASE_DIR, "audios")
 IMGS_DIR = os.path.join(BASE_DIR, "imagens")
 VIDEOS_DIR = os.path.join(BASE_DIR, "videos")
-VOICE_SAMPLE = os.path.join(BASE_DIR, "voice_sample.wav")
-FONT_NAME = "Anton"  # Fonte padrão
+FONTS_DIR = os.path.join(BASE_DIR, "fonts")
 
 # Configurações de vídeo (formato Reels 9:16)
 VIDEO_WIDTH = 1080
 VIDEO_HEIGHT = 1920
+FPS = 24
+
+# Configurações de legenda
+FONT_NAME = "Anton"
+FONT_SIZE = 72
+FONT_COLOR = "yellow"
+STROKE_COLOR = "black"
+STROKE_WIDTH = 2
+
+# Garante que pastas existem
+os.makedirs(VIDEOS_DIR, exist_ok=True)
 
 # ========================================
 # FUNÇÕES AUXILIARES
@@ -36,58 +52,58 @@ def sanitize_image_files():
             if old_path != new_path:
                 os.rename(old_path, new_path)
 
-def generate_audio_with_voice_cloning(text, audio_id):
-    """Gera áudio com clonagem de voz usando TTS"""
-    audio_path = f"{BASE_DIR}/audio_{audio_id}.wav"
+def generate_subtitles(audio_path):
+    """
+    Gera legendas com timestamps usando Whisper
     
-    print(f"🎤 Gerando áudio com clonagem de voz para ID: {audio_id}")
-    print(f"🎯 Usando voice sample: {VOICE_SAMPLE}")
+    Args:
+        audio_path: Path do arquivo de áudio
     
-    try:
-        # Inicializa TTS com modelo XTTS_v2 para clonagem
-        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
-        
-        # Gera áudio clonando a voz do voice_sample
-        tts.tts_to_file(
-            text=text,
-            speaker_wav=VOICE_SAMPLE,
-            language="pt",
-            file_path=audio_path
-        )
-        
-        print(f"✅ Áudio criado com clonagem de voz: {audio_path}")
-        return audio_path
-        
-    except Exception as e:
-        print(f"❌ Erro na geração de áudio: {str(e)}")
-        raise
-
-def generate_subtitles(audio_path, subs_path):
-    """Gera legendas com timestamps usando Whisper"""
+    Returns:
+        Lista de segmentos [(start, end), texto]
+    """
     print("📝 Gerando legendas com Whisper...")
     
     try:
         # Carrega modelo Whisper
-        model = load_model("base")
+        print("🔄 Carregando modelo Whisper...")
+        model = whisper.load_model("base")
         
         # Transcreve com timestamps
-        result = transcribe_timestamped(model, audio_path, language="pt")
-        
-        # Salva resultado completo
-        with open(subs_path, "w", encoding="utf-8") as f:
-            json.dump(result["segments"], f, ensure_ascii=False, indent=2)
+        print("🎙️ Transcrevendo áudio...")
+        result = whisper.transcribe(model, audio_path, language="pt")
         
         # Formata segmentos para o vídeo
-        segments = [((seg["start"], seg["end"]), seg["text"]) for seg in result["segments"]]
+        segments = []
+        for segment in result['segments']:
+            start = segment['start']
+            end = segment['end']
+            text = segment['text'].strip()
+            if text:
+                segments.append(((start, end), text))
+        
         print(f"✅ {len(segments)} segmentos de legenda criados")
         return segments
         
     except Exception as e:
-        print(f"❌ Erro na geração de legendas: {str(e)}")
-        raise
+        print(f"⚠️ Erro na geração de legendas: {str(e)}")
+        print("⚠️ Continuando sem legendas...")
+        return []
 
 def create_text_clips(segments, width):
-    """Cria clipes de texto para as legendas"""
+    """
+    Cria clipes de texto para as legendas
+    
+    Args:
+        segments: Lista de segmentos [(start, end), texto]
+        width: Largura do vídeo
+    
+    Returns:
+        Lista de TextClips
+    """
+    if not segments:
+        return []
+    
     print(f"📝 Criando {len(segments)} clipes de texto...")
     
     clips = []
@@ -96,48 +112,56 @@ def create_text_clips(segments, width):
             # Cria clipe de texto
             txt_clip = TextClip(
                 txt, 
-                fontsize=72, 
-                color="yellow", 
+                fontsize=FONT_SIZE, 
+                color=FONT_COLOR, 
                 font=FONT_NAME,
-                size=(width, None), 
+                size=(width * 0.9, None),  # 90% da largura
                 method="caption", 
                 align="center",
-                stroke_color="black",
-                stroke_width=2
-            ).set_position("center").set_start(start).set_end(end)
+                stroke_color=STROKE_COLOR,
+                stroke_width=STROKE_WIDTH
+            ).set_position(("center", "bottom")).set_start(start).set_duration(end - start)
             
             clips.append(txt_clip)
             print(f"   ✓ Clipe {i+1}/{len(segments)}: '{txt[:30]}...'")
             
         except Exception as e:
-            print(f"   ❌ Erro no clipe {i+1}: {str(e)}")
+            print(f"   ⚠️ Erro no clipe {i+1}: {str(e)}")
             continue
     
     print(f"✅ {len(clips)} clipes de texto criados")
     return clips
 
-def create_video_composition(audio_path, video_id):
-    """Cria vídeo completo com imagens, áudio e legendas"""
-    print("🎬 Iniciando criação do vídeo...")
+def create_video(video_id):
+    """
+    Cria vídeo completo com imagens, áudio e legendas
     
-    subs_path = f"{BASE_DIR}/subs_{video_id}.json"
-    video_path = f"{VIDEOS_DIR}/video_{video_id}.mp4"
+    Args:
+        video_id: ID único do vídeo
     
-    # Limpa vídeos antigos antes de criar novo
-    print("🧹 Limpando vídeos antigos...")
-    for old_video in os.listdir(VIDEOS_DIR):
-        if old_video.endswith('.mp4'):
-            old_path = os.path.join(VIDEOS_DIR, old_video)
-            os.remove(old_path)
-            print(f"🗑️ Removido: {old_video}")
+    Returns:
+        Path do vídeo gerado
+    """
+    print(f"\n{'='*60}")
+    print(f"🎬 CRIAÇÃO DE VÍDEO - ID: {video_id}")
+    print(f"{'='*60}\n")
+    
+    # Paths
+    audio_path = os.path.join(AUDIOS_DIR, f"audio_{video_id}.wav")
+    video_path = os.path.join(VIDEOS_DIR, f"video_{video_id}.mp4")
+    
+    # Verifica se áudio existe
+    if not os.path.exists(audio_path):
+        raise FileNotFoundError(f"❌ Áudio não encontrado: {audio_path}")
+    
+    print(f"🎵 Áudio encontrado: {audio_path}")
+    
+    # Verifica se existem imagens
+    if not os.path.exists(IMGS_DIR):
+        raise FileNotFoundError(f"❌ Pasta de imagens não encontrada: {IMGS_DIR}")
     
     # Sanitiza nomes de arquivos de imagem
     sanitize_image_files()
-    
-    # Gera legendas (DESABILITADO - Whisper trava o processo)
-    # segments = generate_subtitles(audio_path, subs_path)
-    segments = []  # Sem legendas por enquanto
-    print("⚠️ Legendas desabilitadas temporariamente (Whisper causa timeout)")
     
     # Carrega imagens válidas
     img_files = sorted([
@@ -150,11 +174,26 @@ def create_video_composition(audio_path, video_id):
     
     print(f"🖼️ {len(img_files)} imagens encontradas")
     
+    # Limpa vídeos antigos antes de criar novo
+    print("🧹 Limpando vídeos antigos...")
+    for old_video in os.listdir(VIDEOS_DIR):
+        if old_video.endswith('.mp4'):
+            old_path = os.path.join(VIDEOS_DIR, old_video)
+            try:
+                os.remove(old_path)
+                print(f"   🗑️ Removido: {old_video}")
+            except Exception as e:
+                print(f"   ⚠️ Erro ao remover {old_video}: {e}")
+    
+    # Gera legendas (pode falhar, continuará sem legendas)
+    segments = generate_subtitles(audio_path)
+    
     # Calcula duração por imagem baseado no áudio
-    audio_duration = AudioFileClip(audio_path).duration
+    audio_clip = AudioFileClip(audio_path)
+    audio_duration = audio_clip.duration
     img_duration = audio_duration / len(img_files)
     
-    print(f"🎵 Duração do áudio: {audio_duration:.2f}s")
+    print(f"⏱️ Duração do áudio: {audio_duration:.2f}s")
     print(f"⏱️ Duração por imagem: {img_duration:.2f}s")
     
     # Cria clipes de imagens (formato Reels 9:16)
@@ -177,7 +216,7 @@ def create_video_composition(audio_path, video_id):
             print(f"   ✓ Imagem {i+1}/{len(img_files)}: {os.path.basename(img_path)}")
             
         except Exception as e:
-            print(f"   ❌ Erro na imagem {i+1}: {str(e)}")
+            print(f"   ⚠️ Erro na imagem {i+1}: {str(e)}")
             continue
     
     if not img_clips:
@@ -188,73 +227,56 @@ def create_video_composition(audio_path, video_id):
     background = concatenate_videoclips(img_clips, method="compose")
     
     # Cria legendas
-    text_clips = create_text_clips(segments, width=900)
+    text_clips = create_text_clips(segments, width=VIDEO_WIDTH)
     
     # Composição final
     print("🎨 Compondo vídeo final...")
-    final = CompositeVideoClip([background] + text_clips)
-    final = final.set_audio(AudioFileClip(audio_path))
+    if text_clips:
+        final = CompositeVideoClip([background] + text_clips)
+    else:
+        final = background
+    
+    final = final.set_audio(audio_clip)
     
     # Renderiza vídeo
     print("⏳ Renderizando vídeo (pode demorar alguns minutos)...")
     final.write_videofile(
         video_path, 
-        fps=24, 
+        fps=FPS, 
         codec='libx264', 
         audio_codec='aac',
         verbose=False,
         logger=None
     )
     
-    print(f"✅ Vídeo finalizado: {video_path}")
-    
-    # Limpa arquivos temporários
-    if os.path.exists(subs_path):
-        os.remove(subs_path)
-        print("🗑️ Arquivo de legendas temporário removido")
+    print(f"\n{'='*60}")
+    print(f"✅ VÍDEO CRIADO COM SUCESSO!")
+    print(f"📁 Arquivo: {video_path}")
+    print(f"📊 Tamanho: {os.path.getsize(video_path) / (1024*1024):.2f} MB")
+    print(f"{'='*60}\n")
     
     return video_path
 
 # ========================================
-# FUNÇÃO PRINCIPAL
+# EXECUÇÃO
 # ========================================
 
-def main():
-    """Função principal que processa argumentos da linha de comando"""
-    if len(sys.argv) != 3:
-        print("❌ Uso: python create_video.py <texto> <video_id>")
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print("❌ Uso: python3 create_video.py \"<video_id>\"")
+        print("\nExemplo:")
+        print("  python3 create_video.py \"teste_001\"")
+        print("\nNota: O áudio deve estar em audios/audio_<video_id>.wav")
+        print("      As imagens devem estar na pasta imagens/")
         sys.exit(1)
     
-    text = sys.argv[1]
-    video_id = sys.argv[2]
-    
-    print(f"\n{'='*60}")
-    print(f"🎬 CRIAÇÃO DE VÍDEO - ID: {video_id}")
-    print(f"📝 Texto: {text[:100]}...")
-    print(f"{'='*60}\n")
+    video_id = sys.argv[1]
     
     try:
-        # 1. Gera áudio com clonagem de voz
-        audio_path = generate_audio_with_voice_cloning(text, video_id)
-        
-        # 2. Cria vídeo completo
-        video_path = create_video_composition(audio_path, video_id)
-        
-        # 3. Limpa arquivo de áudio temporário
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
-            print("🗑️ Arquivo de áudio temporário removido")
-        
-        print(f"\n{'='*60}")
-        print(f"🎉 PROCESSO CONCLUÍDO COM SUCESSO!")
-        print(f"📁 Vídeo salvo em: {video_path}")
-        print(f"{'='*60}\n")
-        
+        create_video(video_id)
+        sys.exit(0)
     except Exception as e:
         print(f"\n{'='*60}")
         print(f"❌ ERRO: {str(e)}")
         print(f"{'='*60}\n")
         sys.exit(1)
-
-if __name__ == '__main__':
-    main()

@@ -14,24 +14,48 @@ Sistema profissional de automação de vídeos com clonagem de voz, legendas aut
 ## 🏗️ Arquitetura
 
 ```
-┌─────────────────┐    HTTP     ┌─────────────────┐
-│   N8n/Cliente   │ ──────────► │   server.py     │
-└─────────────────┘             │ (Flask Server)  │
-                                └─────────────────┘
-                                         │
-                                         ▼ subprocess
-                                ┌─────────────────┐
-                                │ create_video.py │
-                                │ (Processamento) │
-                                └─────────────────┘
+┌─────────────────┐           ┌─────────────────┐
+│   N8n/Cliente   │           │   server.py     │
+│                 │           │ (Flask Server)  │
+│  1. create-audio│──HTTP────►│  Port 5005      │
+│  2. create-video│           └─────────────────┘
+└─────────────────┘                    │
+                                       │ subprocess
+                          ┌────────────┴────────────┐
+                          ▼                         ▼
+                ┌──────────────────┐    ┌──────────────────┐
+                │ create_audio.py  │    │ create_video.py  │
+                │ (TTS + Voice     │    │ (MoviePy +       │
+                │  Cloning)        │    │  Whisper)        │
+                └──────────────────┘    └──────────────────┘
+                          │                         │
+                          ▼                         ▼
+                    audios/                   videos/
 ```
 
 ### Componentes
 
-- **`server.py`**: Servidor Flask que recebe requisições HTTP
-- **`create_video.py`**: Processamento completo de vídeo
+- **`server.py`**: Servidor Flask com 2 endpoints separados
+  - `/create-audio`: Gera áudio com clonagem de voz
+  - `/create-video`: Gera vídeo com legendas
+- **`create_audio.py`**: Script isolado para TTS (XTTS_v2)
+- **`create_video.py`**: Script isolado para criação de vídeo
 - **`INSTALL_VPS.sh`**: Instalação automática completa
 - **`voice_sample.wav`**: Arquivo de voz para clonagem
+
+### Estrutura de Pastas
+
+```
+/home/n8n/files/
+├── audios/          # Áudios gerados pelo TTS
+├── imagens/         # Imagens baixadas pelo N8n
+├── videos/          # Vídeos finais
+├── fonts/           # Fontes para legendas
+├── voice_sample.wav # Amostra de voz
+├── server.py        # Servidor Flask
+├── create_audio.py  # Script TTS
+└── create_video.py  # Script vídeo
+```
 
 ## 🚀 Instalação Super Rápida
 
@@ -79,20 +103,52 @@ A instalação automática:
 
 ## 🌐 Endpoints da API
 
-### Criar Vídeo
+### 1. Criar Áudio (Passo 1)
+```bash
+POST /create-audio
+Content-Type: application/json
+
+{
+  "id": "video001",
+  "text": "Seu texto aqui para gerar o áudio com sua voz clonada"
+}
+```
+
+**Resposta:**
+```json
+{
+  "status": "started",
+  "audio_id": "video001",
+  "message": "Criação de áudio iniciada com sucesso!",
+  "audio_path": "/audios/audio_video001.wav"
+}
+```
+
+### 2. Criar Vídeo (Passo 2)
 ```bash
 POST /create-video
 Content-Type: application/json
 
 {
-  "id": "video001",
-  "text": "Seu texto aqui para gerar o vídeo com sua voz clonada"
+  "id": "video001"
 }
 ```
 
-### Verificar Status
+**Nota:** O áudio e as imagens devem estar prontos antes de chamar este endpoint.
+
+**Resposta:**
+```json
+{
+  "status": "started",
+  "video_id": "video001",
+  "message": "Criação de vídeo iniciada com sucesso!",
+  "images_found": 6
+}
+```
+
+### 3. Verificar Status
 ```bash
-GET /status/<video_id>
+GET /status/<id>
 ```
 
 ### Saúde do Sistema
@@ -125,7 +181,17 @@ GET /download/<filename>
 
 ## 🎯 Como Usar
 
-### 1. Preparar Imagens
+### 1. Criar Áudio
+```bash
+curl -X POST http://SEU_IP:5005/create-audio \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "meu_video_001",
+    "text": "Seu texto aqui"
+  }'
+```
+
+### 2. Preparar Imagens
 Coloque suas imagens na pasta `/files/imagens/`:
 ```bash
 # Exemplo de estrutura
@@ -135,17 +201,14 @@ Coloque suas imagens na pasta `/files/imagens/`:
 └── image_03.jpg
 ```
 
-### 2. Criar Vídeo via API
+### 3. Criar Vídeo
 ```bash
 curl -X POST http://SEU_IP:5005/create-video \
   -H "Content-Type: application/json" \
-  -d '{
-    "id": "meu_video_001",
-    "text": "Acredite no seu processo. Cada passo que você dá hoje aproxima você do seu próximo nível. Continue avançando sempre."
-  }'
+  -d '{"id": "meu_video_001"}'
 ```
 
-### 3. Verificar Status
+### 4. Verificar Status
 ```bash
 curl http://SEU_IP:5005/status/meu_video_001
 ```
@@ -157,26 +220,82 @@ curl -O http://SEU_IP:5005/download/videos/video_meu_video_001.mp4
 
 ## 🔗 Integração com N8n
 
-### Configuração no N8n
+### Workflow Recomendado
 
-1. **HTTP Request Node**:
-   - **URL**: `http://SEU_IP:5005/create-video`
-   - **Method**: POST
-   - **Body**:
-     ```json
-     {
-       "id": "{{ $json.id }}",
-       "text": "{{ $json.text }}"
-     }
-     ```
+```
+1. [Buscar Dados]
+     ↓
+2. [HTTP - Criar Áudio]
+     ↓
+3. [Wait 60s]
+     ↓
+4. [HTTP - Baixar Imagens]
+     ↓
+5. [Wait 10s]
+     ↓
+6. [HTTP - Criar Vídeo]
+     ↓
+7. [Wait 180s]
+     ↓
+8. [HTTP - Download Vídeo]
+```
 
-2. **Salvar Imagens**:
-   - Use a pasta `/files/imagens/` no seu workflow
-   - O N8n pode escrever diretamente nesta pasta
+### 1. Node: Criar Áudio
 
-3. **Buscar Vídeo**:
-   - Vídeos são salvos em `/files/videos/`
-   - Use HTTP Request para baixar: `/download/videos/video_ID.mp4`
+**HTTP Request Node**:
+- **URL**: `http://SEU_IP:5005/create-audio`
+- **Method**: `POST`
+- **Headers**: `Content-Type: application/json`
+- **Body**:
+  ```json
+  {
+    "id": "{{ $json.id }}",
+    "text": "{{ $json.texto }}"
+  }
+  ```
+
+### 2. Node: Wait (60 segundos)
+
+Aguarde o áudio ser gerado.
+
+### 3. Node: Baixar Imagens
+
+Use sua API de imagens (Pexels, etc.) e salve em `/files/imagens/`.
+
+### 4. Node: Wait (10 segundos)
+
+Aguarde as imagens serem salvas.
+
+### 5. Node: Criar Vídeo
+
+**HTTP Request Node**:
+- **URL**: `http://SEU_IP:5005/create-video`
+- **Method**: `POST`
+- **Headers**: `Content-Type: application/json`
+- **Body**:
+  ```json
+  {
+    "id": "{{ $json.id }}"
+  }
+  ```
+
+### 6. Node: Wait (180 segundos)
+
+Aguarde o vídeo ser gerado.
+
+### 7. Node: Download Vídeo
+
+**HTTP Request Node**:
+- **URL**: `http://SEU_IP:5005/download/videos/video_{{ $json.id }}.mp4`
+- **Method**: `GET`
+- **Response Format**: `File`
+
+### Dicas Importantes
+
+- **IDs únicos**: Use `{{ $json.row_number }}` ou `{{ $now.format('YYYYMMDD-HHmmss') }}`
+- **Nunca reutilize IDs**: Cada vídeo precisa de um ID único
+- **Aguarde os processos**: TTS e MoviePy demoram alguns minutos
+- **Salvar imagens primeiro**: O vídeo precisa das imagens já salvas
 
 ## ⚙️ Configurações Avançadas
 

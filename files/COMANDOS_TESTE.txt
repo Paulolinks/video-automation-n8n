@@ -1,0 +1,47 @@
+==============================================
+🧪 COMANDOS DE TESTE - SISTEMA DE VÍDEO
+==============================================
+
+📋 TESTE LOCAL (Windows/Linux):
+
+1️⃣ CRIAR ÁUDIO:
+venv\Scripts\python.exe create_audio.py "O universo está sempre respondendo às suas vibrações. Mas você está ouvindo? O silêncio é a linguagem do coração. Acalme sua mente e escute o que ele tem a dizer." "teste_001"
+
+2️⃣ CRIAR VÍDEO:
+venv\Scripts\python.exe create_video.py "teste_001"
+
+==============================================
+
+📋 TESTE NO VPS (Substituir 31.97.142.45 pelo seu IP):
+
+1️⃣ CRIAR ÁUDIO:
+curl -X POST http://31.97.142.45:5005/create-audio \
+  -H "Content-Type: application/json" \
+  -d '{"id": "teste_001", "text": "O universo está sempre respondendo às suas vibrações. Mas você está ouvindo? O silêncio é a linguagem do coração. Acalme sua mente e escute o que ele tem a dizer."}'
+
+2️⃣ AGUARDAR 60 SEGUNDOS
+
+3️⃣ CRIAR VÍDEO:
+curl -X POST http://31.97.142.45:5005/create-video \
+  -H "Content-Type: application/json" \
+  -d '{"id": "teste_001"}'
+
+4️⃣ AGUARDAR 180 SEGUNDOS
+
+5️⃣ VERIFICAR STATUS:
+curl http://31.97.142.45:5005/status/teste_001
+
+6️⃣ BAIXAR VÍDEO:
+curl -O http://31.97.142.45:5005/download/videos/video_teste_001.mp4
+
+==============================================
+
+✅ RESULTADO ESPERADO:
+- Áudio em: audios/audio_teste_001.wav
+- Vídeo em: videos/video_teste_001.mp4
+- Vídeo formato Reels (1080x1920)
+- Áudio com voz clonada
+- Legendas sincronizadas
+
+==============================================
+

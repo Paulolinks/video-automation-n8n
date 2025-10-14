@@ -70,9 +70,11 @@ fi
 
 # 5. Cria diretórios necessários
 echo "📁 Criando diretórios..."
+mkdir -p /home/n8n/files/audios
 mkdir -p /home/n8n/files/imagens
 mkdir -p /home/n8n/files/videos
 mkdir -p /home/n8n/files/fonts
+mkdir -p /files/audios
 mkdir -p /files/imagens
 mkdir -p /files/videos
 mkdir -p /files/fonts
@@ -81,9 +83,11 @@ mkdir -p /files/fonts
 echo "🔐 Configurando permissões..."
 chown -R n8n:n8n /home/n8n/files
 chown -R n8n:n8n /files
+chmod 755 /home/n8n/files/audios
 chmod 755 /home/n8n/files/imagens
 chmod 755 /home/n8n/files/videos
 chmod 755 /home/n8n/files/fonts
+chmod 755 /files/audios
 chmod 755 /files/imagens
 chmod 755 /files/videos
 chmod 755 /files/fonts

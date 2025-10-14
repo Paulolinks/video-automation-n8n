@@ -4,6 +4,7 @@ torchaudio==2.1.0
 TTS==0.22.0
 transformers==4.33.0
 moviepy==1.0.3
+Pillow==9.5.0
 whisper-timestamped==1.14.2
 librosa
 soundfile
