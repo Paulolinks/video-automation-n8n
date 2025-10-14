@@ -1,0 +1,128 @@
+==============================================
+🔄 ATUALIZAR ARQUIVOS NO VPS (MÉTODO RÁPIDO)
+==============================================
+
+📋 OPÇÃO 1: ATUALIZAÇÃO AUTOMÁTICA (RECOMENDADO)
+------------------------------------------------
+
+# 1. Baixar e executar script de atualização
+curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/UPDATE_VPS.sh -o /tmp/update.sh
+sudo bash /tmp/update.sh
+
+✅ Pronto! O script vai:
+   - Baixar arquivos atualizados do GitHub
+   - Fazer backup dos arquivos atuais
+   - Corrigir Pillow para versão 9.5.0
+   - Reiniciar o serviço
+   - Testar se está funcionando
+
+==============================================
+
+📋 OPÇÃO 2: ATUALIZAÇÃO MANUAL
+------------------------------------------------
+
+# 1. Parar serviço
+sudo systemctl stop video-automation
+
+# 2. Fazer backup
+sudo cp /home/n8n/files/create_video.py /home/n8n/files/create_video.py.backup
+
+# 3. Baixar arquivo atualizado do GitHub
+sudo curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/create_video.py -o /home/n8n/files/create_video.py
+
+# 4. Ajustar permissões
+sudo chown n8n:n8n /home/n8n/files/create_video.py
+
+# 5. Corrigir Pillow
+sudo -u n8n /opt/tts-env/bin/pip uninstall -y Pillow
+sudo -u n8n /opt/tts-env/bin/pip install Pillow==9.5.0
+
+# 6. Reiniciar serviço
+sudo systemctl restart video-automation
+
+# 7. Verificar status
+sudo systemctl status video-automation
+
+# 8. Testar
+curl http://localhost:5005/health
+
+==============================================
+
+📋 OPÇÃO 3: ATUALIZAÇÃO COMPLETA (SE OPÇÃO 1 FALHAR)
+------------------------------------------------
+
+# 1. Baixar repositório completo
+cd /home/n8n
+sudo rm -rf temp_update
+sudo git clone https://github.com/Paulolinks/video-automation-n8n.git temp_update
+
+# 2. Copiar arquivos atualizados
+sudo cp temp_update/files/create_video.py /home/n8n/files/
+sudo cp temp_update/files/create_audio.py /home/n8n/files/
+sudo cp temp_update/files/server.py /home/n8n/files/
+
+# 3. Ajustar permissões
+sudo chown -R n8n:n8n /home/n8n/files
+
+# 4. Limpar
+sudo rm -rf temp_update
+
+# 5. Corrigir Pillow
+sudo -u n8n /opt/tts-env/bin/pip uninstall -y Pillow
+sudo -u n8n /opt/tts-env/bin/pip install Pillow==9.5.0
+
+# 6. Reiniciar
+sudo systemctl restart video-automation
+
+==============================================
+
+🧪 TESTAR APÓS ATUALIZAÇÃO
+------------------------------------------------
+
+# 1. Verificar se serviço está rodando
+sudo systemctl status video-automation
+
+# 2. Testar endpoint
+curl http://localhost:5005/health
+
+# 3. Testar criação de vídeo (com limpeza automática de imagens)
+curl -X POST http://31.97.142.45:5005/create-video \
+  -H "Content-Type: application/json" \
+  -d '{"id": "teste_atualizado"}'
+
+# 4. Ver logs em tempo real
+sudo journalctl -u video-automation -f
+
+# 5. Verificar se vídeo foi criado (após 2-3 minutos)
+ls -lh /home/n8n/files/videos/
+
+==============================================
+
+✅ O QUE FOI CORRIGIDO:
+------------------------------------------------
+
+1. ✅ Limpeza automática de nomes de arquivos com \n
+2. ✅ Remove arquivos vazios automaticamente
+3. ✅ Remove aspas simples dos nomes de arquivos
+4. ✅ Pillow downgrade para 9.5.0 (corrige ANTIALIAS)
+5. ✅ Versões fixas de transformers e tokenizers
+
+==============================================
+
+📊 SE ALGO DER ERRADO:
+------------------------------------------------
+
+# Ver logs detalhados
+sudo journalctl -u video-automation -n 100 --no-pager
+
+# Ver status do serviço
+sudo systemctl status video-automation
+
+# Reiniciar serviço
+sudo systemctl restart video-automation
+
+# Verificar versões das dependências
+sudo -u n8n /opt/tts-env/bin/pip show Pillow torch transformers
+
+==============================================
+
