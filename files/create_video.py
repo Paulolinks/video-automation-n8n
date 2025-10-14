@@ -41,16 +41,40 @@ os.makedirs(VIDEOS_DIR, exist_ok=True)
 # ========================================
 
 def sanitize_image_files():
-    """Remove espaços e quebras de linha dos nomes de arquivos"""
+    """
+    Remove quebras de linha, espaços e caracteres inválidos dos nomes de arquivos.
+    Corrige problemas de arquivos salvos pelo N8n com \n no nome.
+    """
     if not os.path.exists(IMGS_DIR):
         return
+    
+    print("🧹 Limpando nomes de arquivos de imagens...")
+    
     for fname in os.listdir(IMGS_DIR):
-        if fname.startswith("image_") and any(fname.endswith(ext) for ext in [".jpg", ".jpeg", ".png"]):
-            clean = fname.strip().replace('\n', '').replace('\r', '')
-            old_path = os.path.join(IMGS_DIR, fname)
-            new_path = os.path.join(IMGS_DIR, clean)
-            if old_path != new_path:
+        if not os.path.isfile(os.path.join(IMGS_DIR, fname)):
+            continue
+        
+        # Remove quebras de linha, \r, aspas simples e espaços extras
+        clean = fname.replace('\n', '').replace('\r', '').replace("'", "").strip()
+        
+        old_path = os.path.join(IMGS_DIR, fname)
+        new_path = os.path.join(IMGS_DIR, clean)
+        
+        # Remove arquivos vazios
+        if os.path.getsize(old_path) == 0:
+            os.remove(old_path)
+            print(f"   🗑️ Removido arquivo vazio: {fname}")
+            continue
+        
+        # Renomeia se o nome mudou
+        if old_path != new_path and clean:
+            try:
                 os.rename(old_path, new_path)
+                print(f"   🔄 Renomeado: {fname} -> {clean}")
+            except Exception as e:
+                print(f"   ⚠️ Erro ao renomear {fname}: {e}")
+    
+    print("✅ Limpeza de nomes concluída")
 
 def generate_subtitles(audio_path):
     """
