@@ -276,7 +276,12 @@ def create_video(video_id):
     # Concatena imagens
     print("🔗 Concatenando imagens...")
     try:
+        # Define FPS nos clips antes de concatenar
+        for clip in img_clips:
+            clip.fps = FPS
+        
         background = concatenate_videoclips(img_clips, method="compose")
+        background.fps = FPS  # Garante FPS no background também
         bg_fps = getattr(background, 'fps', 'N/A')
         print(f"🐛 DEBUG - Background concatenado: duration={background.duration}, fps={bg_fps}")
     except Exception as e:
@@ -291,10 +296,15 @@ def create_video(video_id):
     # Composição final
     print("🎨 Compondo vídeo final...")
     if text_clips:
+        # Define FPS nos text clips também
+        for txt_clip in text_clips:
+            txt_clip.fps = FPS
         final = CompositeVideoClip([background] + text_clips)
     else:
         final = background
     
+    # Define FPS no clip final ANTES de adicionar áudio
+    final.fps = FPS
     final = final.set_audio(audio_clip)
     
     # Renderiza vídeo
@@ -305,9 +315,8 @@ def create_video(video_id):
     # Valida antes de renderizar
     if final.duration is None or final.duration <= 0:
         raise ValueError(f"Duração do vídeo final inválida: {final.duration}")
-    if final.fps is None:
-        print(f"⚠️ FPS não definido, usando FPS padrão: {FPS}")
-        final.fps = FPS
+    if final.fps is None or final.fps <= 0:
+        raise ValueError(f"FPS do vídeo final inválido: {final.fps}")
     
     final.write_videofile(
         video_path, 
