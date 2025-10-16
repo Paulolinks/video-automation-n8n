@@ -217,16 +217,35 @@ def create_video(video_id):
     audio_duration = audio_clip.duration
     img_duration = audio_duration / len(img_files)
     
+    # ADICIONAR VALIDAÇÃO:
+    if audio_duration is None or audio_duration <= 0:
+        raise ValueError(f"Duração de áudio inválida: {audio_duration}")
+    if img_duration is None or img_duration <= 0:
+        raise ValueError(f"Duração por imagem inválida: {img_duration}")
+    
     print(f"⏱️ Duração do áudio: {audio_duration:.2f}s")
     print(f"⏱️ Duração por imagem: {img_duration:.2f}s")
+    print(f"🐛 DEBUG - audio_duration type: {type(audio_duration)}, value: {audio_duration}")
+    print(f"🐛 DEBUG - img_duration type: {type(img_duration)}, value: {img_duration}")
     
     # Cria clipes de imagens (formato Reels 9:16)
     print("🖼️ Processando imagens...")
     img_clips = []
     for i, img_path in enumerate(img_files):
         try:
+            print(f"🐛 DEBUG - Processando imagem {i+1}: {os.path.basename(img_path)}")
+            print(f"🐛 DEBUG - Duration para imagem: {img_duration} (type: {type(img_duration)})")
+            
+            # Valida duração antes de criar clip
+            if img_duration is None or img_duration <= 0:
+                print(f"   ⚠️ PULANDO - Duração inválida: {img_duration}")
+                continue
+            
             # Carrega imagem e redimensiona para formato Reels
             img_clip = ImageClip(img_path, duration=img_duration)
+            
+            print(f"🐛 DEBUG - ImageClip criado, duration: {img_clip.duration}, fps: {img_clip.fps}")
+            
             img_clip = img_clip.resize(height=VIDEO_HEIGHT)
             
             # Centraliza em fundo preto
@@ -240,15 +259,29 @@ def create_video(video_id):
             print(f"   ✓ Imagem {i+1}/{len(img_files)}: {os.path.basename(img_path)}")
             
         except Exception as e:
-            print(f"   ⚠️ Erro na imagem {i+1}: {str(e)}")
+            print(f"   ⚠️ PULANDO imagem {i+1} devido a erro: {str(e)}")
+            print(f"   🐛 DEBUG - Tipo de erro: {type(e).__name__}")
+            import traceback
+            print(f"   🐛 DEBUG - Traceback: {traceback.format_exc()}")
             continue
     
     if not img_clips:
         raise ValueError("❌ Nenhuma imagem foi processada com sucesso")
     
+    print(f"🐛 DEBUG - Total de clips válidos: {len(img_clips)}")
+    for idx, clip in enumerate(img_clips):
+        print(f"🐛 DEBUG - Clip {idx+1}: duration={clip.duration}, fps={clip.fps}, size={clip.size}")
+    
     # Concatena imagens
     print("🔗 Concatenando imagens...")
-    background = concatenate_videoclips(img_clips, method="compose")
+    try:
+        background = concatenate_videoclips(img_clips, method="compose")
+        print(f"🐛 DEBUG - Background concatenado: duration={background.duration}, fps={background.fps}")
+    except Exception as e:
+        print(f"❌ ERRO na concatenação: {str(e)}")
+        import traceback
+        print(f"🐛 DEBUG - Traceback completo:\n{traceback.format_exc()}")
+        raise
     
     # Cria legendas
     text_clips = create_text_clips(segments, width=VIDEO_WIDTH)
@@ -264,6 +297,16 @@ def create_video(video_id):
     
     # Renderiza vídeo
     print("⏳ Renderizando vídeo (pode demorar alguns minutos)...")
+    print(f"🐛 DEBUG - Final clip: duration={final.duration}, fps={final.fps}, size={final.size}")
+    print(f"🐛 DEBUG - Audio: duration={final.audio.duration if final.audio else 'None'}")
+    
+    # Valida antes de renderizar
+    if final.duration is None or final.duration <= 0:
+        raise ValueError(f"Duração do vídeo final inválida: {final.duration}")
+    if final.fps is None:
+        print(f"⚠️ FPS não definido, usando FPS padrão: {FPS}")
+        final.fps = FPS
+    
     final.write_videofile(
         video_path, 
         fps=FPS, 
