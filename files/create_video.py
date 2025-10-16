@@ -244,7 +244,7 @@ def create_video(video_id):
             # Carrega imagem e redimensiona para formato Reels
             img_clip = ImageClip(img_path, duration=img_duration)
             
-            print(f"🐛 DEBUG - ImageClip criado, duration: {img_clip.duration}, fps: {img_clip.fps}")
+            print(f"🐛 DEBUG - ImageClip criado, duration: {img_clip.duration}")
             
             img_clip = img_clip.resize(height=VIDEO_HEIGHT)
             
@@ -270,13 +270,15 @@ def create_video(video_id):
     
     print(f"🐛 DEBUG - Total de clips válidos: {len(img_clips)}")
     for idx, clip in enumerate(img_clips):
-        print(f"🐛 DEBUG - Clip {idx+1}: duration={clip.duration}, fps={clip.fps}, size={clip.size}")
+        clip_fps = getattr(clip, 'fps', 'N/A')
+        print(f"🐛 DEBUG - Clip {idx+1}: duration={clip.duration}, fps={clip_fps}, size={clip.size}")
     
     # Concatena imagens
     print("🔗 Concatenando imagens...")
     try:
         background = concatenate_videoclips(img_clips, method="compose")
-        print(f"🐛 DEBUG - Background concatenado: duration={background.duration}, fps={background.fps}")
+        bg_fps = getattr(background, 'fps', 'N/A')
+        print(f"🐛 DEBUG - Background concatenado: duration={background.duration}, fps={bg_fps}")
     except Exception as e:
         print(f"❌ ERRO na concatenação: {str(e)}")
         import traceback
