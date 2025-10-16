@@ -100,22 +100,37 @@ def create_video(video_id):
     print("🔗 Concatenando...")
     video = concatenate_videoclips(img_clips, method="compose").set_fps(FPS)
     
-    # Adicionar áudio
-    print("🎵 Adicionando áudio...")
-    video = video.set_audio(audio_clip)
-    
-    # Renderizar
-    print("⏳ Renderizando...")
+    # Renderizar vídeo SEM áudio primeiro (MoviePy tem bug com áudio)
+    print("⏳ Renderizando vídeo (sem áudio)...")
+    temp_video = video_path.replace('.mp4', '_temp.mp4')
     video.write_videofile(
-        video_path,
+        temp_video,
         fps=FPS,
         codec='libx264',
-        audio_codec='aac',
         preset='ultrafast',
         threads=4,
         verbose=False,
         logger=None
     )
+    
+    # Adicionar áudio usando ffmpeg diretamente
+    print("🎵 Adicionando áudio com ffmpeg...")
+    import subprocess
+    result = subprocess.run([
+        'ffmpeg', '-i', temp_video, '-i', audio_path,
+        '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+        '-shortest', '-y', video_path
+    ], capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f"❌ Erro ffmpeg: {result.stderr}")
+        raise Exception("Falha ao adicionar áudio com ffmpeg")
+    
+    # Limpar arquivo temporário
+    try:
+        os.remove(temp_video)
+    except:
+        pass
     
     size_mb = os.path.getsize(video_path) / (1024*1024)
     print(f"\n{'='*60}")
