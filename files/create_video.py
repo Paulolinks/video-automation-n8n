@@ -210,7 +210,9 @@ def create_video(video_id):
                 print(f"   ⚠️ Erro ao remover {old_video}: {e}")
     
     # Gera legendas (pode falhar, continuará sem legendas)
-    segments = generate_subtitles(audio_path)
+    # TEMPORARIAMENTE DESABILITADO - Whisper causando problemas
+    segments = []
+    # segments = generate_subtitles(audio_path)
     
     # Calcula duração por imagem baseado no áudio
     audio_clip = AudioFileClip(audio_path)
@@ -318,14 +320,50 @@ def create_video(video_id):
     if final.fps is None or final.fps <= 0:
         raise ValueError(f"FPS do vídeo final inválido: {final.fps}")
     
-    final.write_videofile(
-        video_path, 
-        fps=FPS, 
-        codec='libx264', 
-        audio_codec='aac',
-        verbose=False,
-        logger=None
-    )
+    try:
+        final.write_videofile(
+            video_path, 
+            fps=FPS, 
+            codec='libx264', 
+            audio_codec='aac',
+            audio_bitrate='192k',
+            preset='medium',
+            threads=2,
+            verbose=False,
+            logger=None
+        )
+    except Exception as e:
+        print(f"❌ ERRO no write_videofile: {str(e)}")
+        print("🔄 Tentando método alternativo sem áudio primeiro...")
+        
+        # Tenta renderizar sem áudio primeiro
+        try:
+            temp_video = video_path.replace('.mp4', '_temp.mp4')
+            background.write_videofile(
+                temp_video,
+                fps=FPS,
+                codec='libx264',
+                preset='medium',
+                threads=2,
+                verbose=False,
+                logger=None
+            )
+            
+            # Adiciona áudio depois usando ffmpeg
+            import subprocess
+            print("🎵 Adicionando áudio com ffmpeg...")
+            subprocess.run([
+                'ffmpeg', '-i', temp_video, '-i', audio_path,
+                '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+                '-shortest', '-y', video_path
+            ], check=True, capture_output=True)
+            
+            os.remove(temp_video)
+            print("✅ Vídeo criado com método alternativo!")
+            
+        except Exception as e2:
+            print(f"❌ Método alternativo também falhou: {str(e2)}")
+            raise
     
     print(f"\n{'='*60}")
     print(f"✅ VÍDEO CRIADO COM SUCESSO!")
