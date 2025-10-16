@@ -1,128 +1,141 @@
-==============================================
-🔄 ATUALIZAR ARQUIVOS NO VPS (MÉTODO RÁPIDO)
-==============================================
+════════════════════════════════════════════════════════════════
+🚀 COMANDOS PARA ATUALIZAR O VPS RAPIDAMENTE
+════════════════════════════════════════════════════════════════
 
 📋 OPÇÃO 1: ATUALIZAÇÃO AUTOMÁTICA (RECOMENDADO)
-------------------------------------------------
+────────────────────────────────────────────────────────────────
 
-# 1. Baixar e executar script de atualização
-curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/UPDATE_VPS.sh -o /tmp/update.sh
-sudo bash /tmp/update.sh
+Execute este comando único no VPS:
 
-✅ Pronto! O script vai:
-   - Baixar arquivos atualizados do GitHub
-   - Fazer backup dos arquivos atuais
-   - Corrigir Pillow para versão 9.5.0
-   - Reiniciar o serviço
-   - Testar se está funcionando
+curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/UPDATE_VPS_QUICK.sh | sudo bash
 
-==============================================
 
-📋 OPÇÃO 2: ATUALIZAÇÃO MANUAL
-------------------------------------------------
+✅ O que este comando faz automaticamente:
+  1. Para o serviço
+  2. Faz backup dos arquivos antigos
+  3. Baixa create_video.py, create_audio.py e server.py do GitHub
+  4. Ajusta permissões
+  5. Reinicia o serviço
+  6. Mostra o status
 
-# 1. Parar serviço
+
+════════════════════════════════════════════════════════════════
+📋 OPÇÃO 2: ATUALIZAÇÃO MANUAL (Passo a Passo)
+════════════════════════════════════════════════════════════════
+
+1️⃣ PARAR O SERVIÇO:
 sudo systemctl stop video-automation
 
-# 2. Fazer backup
-sudo cp /home/n8n/files/create_video.py /home/n8n/files/create_video.py.backup
 
-# 3. Baixar arquivo atualizado do GitHub
-sudo curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/create_video.py -o /home/n8n/files/create_video.py
+2️⃣ BAIXAR ARQUIVOS ATUALIZADOS:
+cd /home/n8n/files
 
-# 4. Ajustar permissões
-sudo chown n8n:n8n /home/n8n/files/create_video.py
+sudo -u n8n curl -o create_video.py https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/create_video.py
 
-# 5. Corrigir Pillow
-sudo -u n8n /opt/tts-env/bin/pip uninstall -y Pillow
-sudo -u n8n /opt/tts-env/bin/pip install Pillow==9.5.0
+sudo -u n8n curl -o create_audio.py https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/create_audio.py
 
-# 6. Reiniciar serviço
+sudo -u n8n curl -o server.py https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/server.py
+
+
+3️⃣ AJUSTAR PERMISSÕES:
+chmod +x /home/n8n/files/*.py
+chown -R n8n:n8n /home/n8n/files/
+
+
+4️⃣ REINICIAR O SERVIÇO:
 sudo systemctl restart video-automation
 
-# 7. Verificar status
+
+5️⃣ VERIFICAR STATUS:
 sudo systemctl status video-automation
 
-# 8. Testar
+
+6️⃣ TESTAR:
 curl http://localhost:5005/health
 
-==============================================
 
-📋 OPÇÃO 3: ATUALIZAÇÃO COMPLETA (SE OPÇÃO 1 FALHAR)
-------------------------------------------------
+════════════════════════════════════════════════════════════════
+📋 OPÇÃO 3: ATUALIZAR APENAS create_video.py
+════════════════════════════════════════════════════════════────
 
-# 1. Baixar repositório completo
-cd /home/n8n
-sudo rm -rf temp_update
-sudo git clone https://github.com/Paulolinks/video-automation-n8n.git temp_update
+Se você só quer atualizar o create_video.py:
 
-# 2. Copiar arquivos atualizados
-sudo cp temp_update/files/create_video.py /home/n8n/files/
-sudo cp temp_update/files/create_audio.py /home/n8n/files/
-sudo cp temp_update/files/server.py /home/n8n/files/
-
-# 3. Ajustar permissões
-sudo chown -R n8n:n8n /home/n8n/files
-
-# 4. Limpar
-sudo rm -rf temp_update
-
-# 5. Corrigir Pillow
-sudo -u n8n /opt/tts-env/bin/pip uninstall -y Pillow
-sudo -u n8n /opt/tts-env/bin/pip install Pillow==9.5.0
-
-# 6. Reiniciar
-sudo systemctl restart video-automation
-
-==============================================
-
-🧪 TESTAR APÓS ATUALIZAÇÃO
-------------------------------------------------
-
-# 1. Verificar se serviço está rodando
-sudo systemctl status video-automation
-
-# 2. Testar endpoint
-curl http://localhost:5005/health
-
-# 3. Testar criação de vídeo (com limpeza automática de imagens)
-curl -X POST http://31.97.142.45:5005/create-video \
-  -H "Content-Type: application/json" \
-  -d '{"id": "teste_atualizado"}'
-
-# 4. Ver logs em tempo real
+sudo systemctl stop video-automation
+cd /home/n8n/files
+sudo -u n8n curl -o create_video.py https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/create_video.py
+chmod +x create_video.py
+sudo systemctl start video-automation
 sudo journalctl -u video-automation -f
 
-# 5. Verificar se vídeo foi criado (após 2-3 minutos)
-ls -lh /home/n8n/files/videos/
 
-==============================================
+════════════════════════════════════════════════════════════════
+🧪 TESTAR APÓS ATUALIZAÇÃO
+════════════════════════════════════════════════════════════════
 
-✅ O QUE FOI CORRIGIDO:
-------------------------------------------------
+1️⃣ CRIAR ÁUDIO:
+curl -X POST http://31.97.142.45:5005/create-audio \
+  -H "Content-Type: application/json" \
+  -d '{"id": "teste_update", "text": "Teste após atualização do código com set_fps."}'
 
-1. ✅ Limpeza automática de nomes de arquivos com \n
-2. ✅ Remove arquivos vazios automaticamente
-3. ✅ Remove aspas simples dos nomes de arquivos
-4. ✅ Pillow downgrade para 9.5.0 (corrige ANTIALIAS)
-5. ✅ Versões fixas de transformers e tokenizers
 
-==============================================
+2️⃣ AGUARDAR 60 SEGUNDOS
 
-📊 SE ALGO DER ERRADO:
-------------------------------------------------
 
-# Ver logs detalhados
+3️⃣ CRIAR VÍDEO:
+curl -X POST http://31.97.142.45:5005/create-video \
+  -H "Content-Type: application/json" \
+  -d '{"id": "teste_update"}'
+
+
+4️⃣ VER LOGS EM TEMPO REAL:
+sudo journalctl -u video-automation -f
+
+
+5️⃣ VERIFICAR STATUS:
+curl http://31.97.142.45:5005/status/teste_update
+
+
+6️⃣ BAIXAR VÍDEO:
+curl -O http://31.97.142.45:5005/download/videos/video_teste_update.mp4
+
+
+════════════════════════════════════════════════════════════════
+🔍 COMANDOS DE DEBUG
+════════════════════════════════════════════════════════════════
+
+Ver logs completos:
 sudo journalctl -u video-automation -n 100 --no-pager
 
-# Ver status do serviço
+Ver processos Python rodando:
+ps aux | grep python
+
+Ver portas em uso:
+sudo netstat -tlnp | grep 5005
+
+Ver arquivos criados:
+ls -lh /home/n8n/files/audios/
+ls -lh /home/n8n/files/videos/
+
+Parar e iniciar:
+sudo systemctl stop video-automation
+sudo systemctl start video-automation
 sudo systemctl status video-automation
 
-# Reiniciar serviço
-sudo systemctl restart video-automation
 
-# Verificar versões das dependências
-sudo -u n8n /opt/tts-env/bin/pip show Pillow torch transformers
+════════════════════════════════════════════════════════════════
+🎯 RESUMO DAS MUDANÇAS NESTA ATUALIZAÇÃO
+════════════════════════════════════════════════════════════════
 
-==============================================
+✅ create_video.py SIMPLIFICADO:
+   - Removeu todo o código do Whisper (legendas desabilitadas)
+   - Removeu imports desnecessários
+   - Usa .set_fps() em vez de .fps =
+   - Código 3x menor e mais limpo
+   - Foco apenas em vídeo com imagens + áudio
 
+✅ Correções:
+   - Corrige erro "must be real number, not NoneType"
+   - FPS definido corretamente em todos os clips
+   - Método de render mais estável
+
+════════════════════════════════════════════════════════════════
