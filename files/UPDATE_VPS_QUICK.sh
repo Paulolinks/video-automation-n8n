@@ -1,56 +1,62 @@
 #!/bin/bash
-# ============================================
-# ATUALIZAÇÃO RÁPIDA DO VPS
-# ============================================
-# Este script atualiza apenas o create_video.py
-# sem reinstalar dependências
-# ============================================
+# Script de atualização rápida do VPS
+# Uso: curl -sSL https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/UPDATE_VPS_QUICK.sh | sudo bash
 
-set -e
+echo "🔄 ATUALIZAÇÃO RÁPIDA DO VPS"
+echo "============================================================"
 
-echo "============================================"
-echo "🔄 ATUALIZAÇÃO RÁPIDA - create_video.py"
-echo "============================================"
+# Parar serviço
+echo "⏸️ Parando serviço..."
+systemctl stop video-automation
 
-# Vai para o diretório do projeto
+# Baixar arquivos atualizados
+echo "📥 Baixando arquivos do GitHub..."
 cd /home/n8n/files
 
-# Backup do arquivo atual
-echo "📦 Fazendo backup do arquivo atual..."
-cp create_video.py create_video.py.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+# Backup dos arquivos antigos
+echo "💾 Fazendo backup..."
+cp create_video.py create_video.py.bak 2>/dev/null
+cp create_audio.py create_audio.py.bak 2>/dev/null
+cp server.py server.py.bak 2>/dev/null
 
-# Baixa a versão mais recente do GitHub
-echo "⬇️ Baixando versão atualizada do GitHub..."
-wget -q https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/create_video.py -O create_video.py.tmp
+# Baixar novos arquivos
+echo "⬇️ Baixando create_video.py..."
+sudo -u n8n curl -o create_video.py https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/create_video.py
 
-# Verifica se o download foi bem-sucedido
-if [ $? -eq 0 ] && [ -s create_video.py.tmp ]; then
-    echo "✅ Download concluído com sucesso!"
-    mv create_video.py.tmp create_video.py
-    chmod +x create_video.py
-    chown n8n:n8n create_video.py
-else
-    echo "❌ Erro no download! Mantendo arquivo original."
-    rm -f create_video.py.tmp
-    exit 1
-fi
+echo "⬇️ Baixando create_audio.py..."
+sudo -u n8n curl -o create_audio.py https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/create_audio.py
 
-# Reinicia o serviço
-echo "🔄 Reiniciando serviço..."
-systemctl restart video-automation
+echo "⬇️ Baixando server.py..."
+sudo -u n8n curl -o server.py https://raw.githubusercontent.com/Paulolinks/video-automation-n8n/master/files/server.py
+
+# Ajustar permissões
+echo "🔐 Ajustando permissões..."
+chmod +x /home/n8n/files/*.py
+chown -R n8n:n8n /home/n8n/files/
+
+# Reiniciar serviço
+echo "🚀 Reiniciando serviço..."
+systemctl start video-automation
+
+# Aguardar inicialização
+sleep 5
+
+# Verificar status
+echo ""
+echo "✅ STATUS DO SERVIÇO:"
+systemctl status video-automation --no-pager -l
 
 echo ""
-echo "============================================"
+echo "🧪 TESTANDO SERVIDOR:"
+curl -s http://localhost:5005/health | head -20
+
+echo ""
+echo "============================================================"
 echo "✅ ATUALIZAÇÃO CONCLUÍDA!"
-echo "============================================"
 echo ""
-echo "📋 PRÓXIMOS PASSOS:"
-echo "1. Teste a criação de vídeo:"
-echo "   curl -X POST http://31.97.142.45:5005/create-video \\"
-echo "     -H 'Content-Type: application/json' \\"
-echo "     -d '{\"id\": \"teste_atualizado\"}'"
-echo ""
-echo "2. Veja os logs com debug:"
-echo "   sudo journalctl -u video-automation -f | grep -E '(DEBUG|ERRO|✓|⚠️)'"
-echo ""
-
+echo "📝 COMANDOS ÚTEIS:"
+echo "  - Ver logs: sudo journalctl -u video-automation -f"
+echo "  - Testar: curl http://localhost:5005/health"
+echo "  - Parar: sudo systemctl stop video-automation"
+echo "  - Iniciar: sudo systemctl start video-automation"
+echo "============================================================"
