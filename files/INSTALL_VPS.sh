@@ -82,26 +82,18 @@ mkdir -p /files/fonts
 # 6. Configura permissões (CORRIGIDO - recursivo e com write)
 echo "🔐 Configurando permissões..."
 
-# Permissões para usuário n8n
+# Permissões para usuário n8n (serviço Flask)
 chown -R n8n:n8n /home/n8n/files
 chown -R n8n:n8n /files
 
-# Permissões para usuário do container Docker (ID 1000)
+# Permissões para usuário do container Docker (ID 1000) - N8n
 chown -R 1000:1000 /home/n8n/files
 
-# Permissões gerais recursivas
-chmod -R 755 /home/n8n/files
-chmod -R 755 /files
-
-# Garantir permissão de escrita nas pastas críticas
+# Permissões recursivas com escrita
 chmod -R 775 /home/n8n/files
 chmod -R 775 /files
-chmod -R 775 /home/n8n/files/audios
-chmod -R 775 /home/n8n/files/videos
-chmod -R 775 /home/n8n/files/imagens
-chmod -R 775 /files/audios
-chmod -R 775 /files/videos
-chmod -R 775 /files/imagens
+
+echo "✅ Permissões configuradas: n8n (serviço) + 1000 (Docker)"
 
 # 7. Cria ambiente virtual com Python 3.11 FORÇADO
 echo "🐍 Criando ambiente virtual Python 3.11..."
