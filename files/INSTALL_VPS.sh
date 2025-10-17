@@ -302,28 +302,49 @@ chmod -R 775 /files
 
 echo "✅ Permissões finais aplicadas"
 
-# Verificação de permissões
-echo "🔍 Verificando donos dos arquivos..."
-AUDIOS_OWNER=$(stat -c '%U' /home/n8n/files/audios)
-VIDEOS_OWNER=$(stat -c '%U' /home/n8n/files/videos)
-IMAGENS_OWNER=$(stat -c '%U' /home/n8n/files/imagens)
+# Verificação e correção FORÇADA de permissões
+echo "🔍 Verificando e corrigindo permissões..."
 
-if [ "$AUDIOS_OWNER" != "1000" ]; then
-    echo "❌ ERRO: audios/ não está com dono 1000 (atual: $AUDIOS_OWNER)"
-    exit 1
-fi
+# Diagnóstico: ver o que está interferindo
+echo "🔍 Diagnóstico de interferências..."
+echo "   Processos que podem interferir:"
+ps aux | grep -E "(chown|chmod|ubuntu)" | grep -v grep || echo "   Nenhum processo suspeito encontrado"
+echo "   Mounts especiais:"
+mount | grep -E "(n8n|files)" || echo "   Nenhum mount especial encontrado"
 
-if [ "$VIDEOS_OWNER" != "1000" ]; then
-    echo "❌ ERRO: videos/ não está com dono 1000 (atual: $VIDEOS_OWNER)"
-    exit 1
-fi
-
-if [ "$IMAGENS_OWNER" != "1000" ]; then
-    echo "❌ ERRO: imagens/ não está com dono 1000 (atual: $IMAGENS_OWNER)"
-    exit 1
-fi
-
-echo "✅ Permissões verificadas e corretas"
+for i in {1..5}; do
+    echo "🔄 Tentativa $i/5 de correção de permissões..."
+    
+    # Força permissões novamente
+    chown -R n8n:n8n /home/n8n/files
+    chmod -R 775 /home/n8n/files
+    chown -R 1000:1000 /home/n8n/files/audios
+    chown -R 1000:1000 /home/n8n/files/videos
+    chown -R 1000:1000 /home/n8n/files/imagens
+    
+    # Verifica se funcionou
+    AUDIOS_OWNER=$(stat -c '%U' /home/n8n/files/audios)
+    VIDEOS_OWNER=$(stat -c '%U' /home/n8n/files/videos)
+    IMAGENS_OWNER=$(stat -c '%U' /home/n8n/files/imagens)
+    
+    echo "   audios: $AUDIOS_OWNER, videos: $VIDEOS_OWNER, imagens: $IMAGENS_OWNER"
+    
+    if [ "$AUDIOS_OWNER" = "1000" ] && [ "$VIDEOS_OWNER" = "1000" ] && [ "$IMAGENS_OWNER" = "1000" ]; then
+        echo "✅ Permissões corrigidas com sucesso!"
+        break
+    fi
+    
+    if [ $i -eq 5 ]; then
+        echo "❌ ERRO: Não foi possível corrigir permissões após 5 tentativas"
+        echo "   audios: $AUDIOS_OWNER (esperado: 1000)"
+        echo "   videos: $VIDEOS_OWNER (esperado: 1000)"
+        echo "   imagens: $IMAGENS_OWNER (esperado: 1000)"
+        exit 1
+    fi
+    
+    echo "   ⏳ Aguardando 2 segundos antes da próxima tentativa..."
+    sleep 2
+done
 
 # Testa criação de arquivo nas pastas
 echo "📁 Testando permissões de escrita..."
