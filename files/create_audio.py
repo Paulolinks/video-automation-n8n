@@ -18,8 +18,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 AUDIOS_DIR = os.path.join(BASE_DIR, "audios")
 VOICE_SAMPLE = os.path.join(BASE_DIR, "voice_sample.wav")
 
-# Garante que a pasta audios existe
-os.makedirs(AUDIOS_DIR, exist_ok=True)
+# Garante que a pasta audios existe COM permissões corretas
+if not os.path.exists(AUDIOS_DIR):
+    os.makedirs(AUDIOS_DIR, mode=0o777, exist_ok=True)
+    print(f"📁 Pasta {AUDIOS_DIR} criada com permissões 777")
+else:
+    # Se já existe, força permissões
+    try:
+        os.chmod(AUDIOS_DIR, 0o777)
+        print(f"🔓 Permissões da pasta {AUDIOS_DIR} atualizadas para 777")
+    except Exception as e:
+        print(f"⚠️ Não foi possível atualizar permissões: {e}")
 
 # ========================================
 # FUNÇÃO PRINCIPAL
@@ -62,6 +71,19 @@ def generate_audio(text, audio_id):
         print("🔄 Carregando modelo XTTS_v2...")
         tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=False)
         
+        # Testa permissões antes de gerar áudio
+        print(f"🔍 Testando permissões de escrita em {AUDIOS_DIR}...")
+        temp_path = output_path + ".test"
+        try:
+            with open(temp_path, 'w') as f:
+                f.write("test")
+            os.remove(temp_path)
+            print(f"✅ Permissões OK! Pode escrever em {AUDIOS_DIR}")
+        except Exception as perm_error:
+            print(f"❌ ERRO DE PERMISSÃO: {perm_error}")
+            print(f"📂 Tentando criar com permissões 666...")
+            raise
+        
         # Gera áudio clonando a voz do voice_sample
         print("🎙️ Gerando áudio com clonagem de voz...")
         tts.tts_to_file(
@@ -71,6 +93,13 @@ def generate_audio(text, audio_id):
             file_path=output_path,
             split_sentences=True  # Melhora naturalidade
         )
+        
+        # Força permissões no arquivo criado
+        try:
+            os.chmod(output_path, 0o666)
+            print(f"🔓 Permissões do arquivo atualizadas para 666")
+        except:
+            pass
         
         print(f"\n{'='*60}")
         print(f"✅ ÁUDIO CRIADO COM SUCESSO!")
