@@ -50,6 +50,14 @@ def generate_audio(text, audio_id):
     print(f"💾 Áudio será salvo em: {output_path}")
     
     try:
+        # Sanitizar texto - remove pontuação que o TTS pode falar
+        import re
+        text_clean = re.sub(r'[.!?;:]', '', text)  # Remove pontos, exclamação, interrogação, etc
+        text_clean = re.sub(r'\s+', ' ', text_clean).strip()  # Remove espaços extras
+        
+        print(f"📝 Texto original: {text[:50]}...")
+        print(f"📝 Texto limpo: {text_clean[:50]}...")
+        
         # Inicializa TTS com modelo XTTS_v2 (melhor qualidade de clonagem)
         print("🔄 Carregando modelo XTTS_v2...")
         tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=False)
@@ -57,7 +65,7 @@ def generate_audio(text, audio_id):
         # Gera áudio clonando a voz do voice_sample
         print("🎙️ Gerando áudio com clonagem de voz...")
         tts.tts_to_file(
-            text=text,
+            text=text_clean,  # <-- texto limpo
             speaker_wav=VOICE_SAMPLE,
             language="pt",
             file_path=output_path,

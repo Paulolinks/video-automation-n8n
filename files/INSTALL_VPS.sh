@@ -79,18 +79,20 @@ mkdir -p /files/imagens
 mkdir -p /files/videos
 mkdir -p /files/fonts
 
-# 6. Configura permissões
+# 6. Configura permissões (CORRIGIDO - recursivo e com write)
 echo "🔐 Configurando permissões..."
 chown -R n8n:n8n /home/n8n/files
 chown -R n8n:n8n /files
-chmod 755 /home/n8n/files/audios
-chmod 755 /home/n8n/files/imagens
-chmod 755 /home/n8n/files/videos
-chmod 755 /home/n8n/files/fonts
-chmod 755 /files/audios
-chmod 755 /files/imagens
-chmod 755 /files/videos
-chmod 755 /files/fonts
+chmod -R 755 /home/n8n/files
+chmod -R 755 /files
+
+# Garantir permissão de escrita nas pastas críticas
+chmod -R 775 /home/n8n/files/audios
+chmod -R 775 /home/n8n/files/videos
+chmod -R 775 /home/n8n/files/imagens
+chmod -R 775 /files/audios
+chmod -R 775 /files/videos
+chmod -R 775 /files/imagens
 
 # 7. Cria ambiente virtual com Python 3.11 FORÇADO
 echo "🐍 Criando ambiente virtual Python 3.11..."
