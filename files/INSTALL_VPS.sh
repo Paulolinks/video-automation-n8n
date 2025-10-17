@@ -259,6 +259,15 @@ else
     exit 1
 fi
 
+# Garantir permissões finais (crítico após restart/updates)
+echo "🔐 Aplicando permissões finais..."
+chown -R n8n:n8n /home/n8n/files
+chown -R 1000:1000 /home/n8n/files/audios
+chown -R 1000:1000 /home/n8n/files/videos
+chown -R 1000:1000 /home/n8n/files/imagens
+chmod -R 775 /home/n8n/files
+echo "✅ Permissões finais aplicadas"
+
 # Testa criação de arquivo nas pastas
 echo "📁 Testando permissões de escrita..."
 sudo -u n8n touch /files/imagens/teste.txt
