@@ -7,6 +7,7 @@ Uso: python3 create_audio.py "<texto>" "<audio_id>"
 
 import sys
 import os
+import re
 from TTS.api import TTS
 
 # ========================================
@@ -51,7 +52,6 @@ def generate_audio(text, audio_id):
     
     try:
         # Sanitizar texto - remove pontuação que o TTS pode falar
-        import re
         text_clean = re.sub(r'[.!?;:]', '', text)  # Remove pontos, exclamação, interrogação, etc
         text_clean = re.sub(r'\s+', ' ', text_clean).strip()  # Remove espaços extras
         
