@@ -81,12 +81,21 @@ mkdir -p /files/fonts
 
 # 6. Configura permissões (CORRIGIDO - recursivo e com write)
 echo "🔐 Configurando permissões..."
+
+# Permissões para usuário n8n
 chown -R n8n:n8n /home/n8n/files
 chown -R n8n:n8n /files
+
+# Permissões para usuário do container Docker (ID 1000)
+chown -R 1000:1000 /home/n8n/files
+
+# Permissões gerais recursivas
 chmod -R 755 /home/n8n/files
 chmod -R 755 /files
 
 # Garantir permissão de escrita nas pastas críticas
+chmod -R 775 /home/n8n/files
+chmod -R 775 /files
 chmod -R 775 /home/n8n/files/audios
 chmod -R 775 /home/n8n/files/videos
 chmod -R 775 /home/n8n/files/imagens
