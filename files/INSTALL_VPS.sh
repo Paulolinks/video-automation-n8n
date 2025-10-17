@@ -68,7 +68,15 @@ else
     echo "✅ Usuário n8n já existe"
 fi
 
-# 5. Cria diretórios necessários
+# 5. Limpeza completa (instalação do zero)
+echo "🗑️ Limpando instalação anterior (se existir)..."
+systemctl stop video-automation 2>/dev/null || true
+systemctl disable video-automation 2>/dev/null || true
+rm -rf /home/n8n/files/*
+rm -rf /opt/tts-env
+echo "✅ Sistema limpo, iniciando instalação do zero"
+
+# 6. Cria diretórios necessários
 echo "📁 Criando diretórios..."
 mkdir -p /home/n8n/files/audios
 mkdir -p /home/n8n/files/imagens
@@ -79,23 +87,37 @@ mkdir -p /files/imagens
 mkdir -p /files/videos
 mkdir -p /files/fonts
 
-# 6. Configura permissões (CORRIGIDO - recursivo e com write)
+# 7. Baixar arquivos do GitHub
+echo "📥 Baixando arquivos do GitHub..."
+cd /tmp
+rm -rf video-automation-n8n
+git clone https://github.com/Paulolinks/video-automation-n8n.git
+cp -r video-automation-n8n/files/* /home/n8n/files/
+rm -rf video-automation-n8n
+echo "✅ Arquivos copiados do GitHub"
+
+# 8. Configura permissões (CORRIGIDO - lógica não sobrescreve)
 echo "🔐 Configurando permissões..."
 
-# Permissões para usuário n8n (serviço Flask)
+# Primeiro: dono n8n para TUDO
 chown -R n8n:n8n /home/n8n/files
-chown -R n8n:n8n /files
-
-# Permissões para usuário do container Docker (ID 1000) - N8n
-chown -R 1000:1000 /home/n8n/files
-
-# Permissões recursivas com escrita
 chmod -R 775 /home/n8n/files
+
+# Depois: dono 1000 APENAS para pastas específicas que o Docker precisa
+chown -R 1000:1000 /home/n8n/files/audios
+chown -R 1000:1000 /home/n8n/files/videos  
+chown -R 1000:1000 /home/n8n/files/imagens
+
+# Permissões para /files (symlink do Docker)
+chown -R n8n:n8n /files
+chown -R 1000:1000 /files/audios
+chown -R 1000:1000 /files/videos
+chown -R 1000:1000 /files/imagens
 chmod -R 775 /files
 
-echo "✅ Permissões configuradas: n8n (serviço) + 1000 (Docker)"
+echo "✅ Permissões configuradas: n8n (geral) + 1000 (pastas específicas)"
 
-# 7. Cria ambiente virtual com Python 3.11 FORÇADO
+# 9. Cria ambiente virtual com Python 3.11 FORÇADO
 echo "🐍 Criando ambiente virtual Python 3.11..."
 rm -rf /opt/tts-env
 python3.11 -m venv /opt/tts-env
@@ -110,11 +132,11 @@ if [[ ! "$VENV_PYTHON_VERSION" =~ "3.11" ]]; then
     exit 1
 fi
 
-# 8. Atualiza pip
+# 10. Atualiza pip
 echo "📦 Atualizando pip..."
 sudo -u n8n /opt/tts-env/bin/pip install --upgrade pip
 
-# 9. Instala dependências Python NA ORDEM CORRETA
+# 11. Instala dependências Python NA ORDEM CORRETA
 echo "📦 Instalando dependências Python com versões compatíveis..."
 
 echo "   - Flask..."
@@ -135,14 +157,14 @@ sudo -u n8n /opt/tts-env/bin/pip install whisper-timestamped==1.14.2
 echo "   - Pillow (para MoviePy processar imagens)..."
 sudo -u n8n /opt/tts-env/bin/pip install Pillow==9.5.0
 
-# 9.1. CORREÇÃO CRÍTICA: Instala versão correta do transformers para XTTS_v2
+# 11.1. CORREÇÃO CRÍTICA: Instala versão correta do transformers para XTTS_v2
 echo "   - Corrigindo transformers para compatibilidade com XTTS_v2..."
 sudo -u n8n /opt/tts-env/bin/pip uninstall -y transformers 2>/dev/null || true
 sudo -u n8n /opt/tts-env/bin/pip install transformers==4.33.0
 
 echo "✅ Transformers 4.33.0 instalado (compatível com XTTS_v2)"
 
-# 10. Verifica instalação das dependências
+# 12. Verifica instalação das dependências
 echo "🔍 Verificando instalação..."
 echo "   - Python: $(python3.11 --version)"
 echo "   - Pip: $(/opt/tts-env/bin/pip --version)"
@@ -186,7 +208,7 @@ fi
 
 echo "✅ Todas as dependências instaladas com sucesso!"
 
-# 11. Cria serviço systemd
+# 13. Cria serviço systemd
 echo "⚙️ Configurando serviço systemd..."
 cat > /etc/systemd/system/video-automation.service << 'EOF'
 [Unit]
@@ -208,13 +230,13 @@ Environment=PYTHONUNBUFFERED=1
 WantedBy=multi-user.target
 EOF
 
-# 12. Habilita e inicia serviço
+# 14. Habilita e inicia serviço
 echo "🚀 Iniciando serviço..."
 systemctl daemon-reload
 systemctl enable video-automation
 systemctl start video-automation
 
-# 13. Configura firewall
+# 15. Configura firewall
 echo "🔥 Configurando firewall..."
 ufw --force enable
 ufw allow 22/tcp
@@ -222,7 +244,7 @@ ufw allow 5005/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
 
-# 14. Testa funcionamento
+# 16. Testa funcionamento
 echo "🧪 Testando funcionamento..."
 
 # Aguarda serviço iniciar
@@ -261,12 +283,47 @@ fi
 
 # Garantir permissões finais (crítico após restart/updates)
 echo "🔐 Aplicando permissões finais..."
+
+# Primeiro: dono n8n para TUDO
 chown -R n8n:n8n /home/n8n/files
+chmod -R 775 /home/n8n/files
+
+# Depois: dono 1000 APENAS para pastas específicas
 chown -R 1000:1000 /home/n8n/files/audios
 chown -R 1000:1000 /home/n8n/files/videos
 chown -R 1000:1000 /home/n8n/files/imagens
-chmod -R 775 /home/n8n/files
+
+# Permissões para /files (symlink do Docker)
+chown -R n8n:n8n /files
+chown -R 1000:1000 /files/audios
+chown -R 1000:1000 /files/videos
+chown -R 1000:1000 /files/imagens
+chmod -R 775 /files
+
 echo "✅ Permissões finais aplicadas"
+
+# Verificação de permissões
+echo "🔍 Verificando donos dos arquivos..."
+AUDIOS_OWNER=$(stat -c '%U' /home/n8n/files/audios)
+VIDEOS_OWNER=$(stat -c '%U' /home/n8n/files/videos)
+IMAGENS_OWNER=$(stat -c '%U' /home/n8n/files/imagens)
+
+if [ "$AUDIOS_OWNER" != "1000" ]; then
+    echo "❌ ERRO: audios/ não está com dono 1000 (atual: $AUDIOS_OWNER)"
+    exit 1
+fi
+
+if [ "$VIDEOS_OWNER" != "1000" ]; then
+    echo "❌ ERRO: videos/ não está com dono 1000 (atual: $VIDEOS_OWNER)"
+    exit 1
+fi
+
+if [ "$IMAGENS_OWNER" != "1000" ]; then
+    echo "❌ ERRO: imagens/ não está com dono 1000 (atual: $IMAGENS_OWNER)"
+    exit 1
+fi
+
+echo "✅ Permissões verificadas e corretas"
 
 # Testa criação de arquivo nas pastas
 echo "📁 Testando permissões de escrita..."
@@ -291,26 +348,46 @@ else
     exit 1
 fi
 
-# 15. Informações finais
+# Testa criação de áudio
+echo "🎤 Testando criação de áudio..."
+AUDIO_RESPONSE=$(curl -s -X POST http://localhost:5005/create-audio \
+  -H "Content-Type: application/json" \
+  -d '{"id": "teste_instalacao", "text": "Teste de instalação automática"}')
+
+if echo "$AUDIO_RESPONSE" | grep -q "error"; then
+    echo "❌ Erro ao testar criação de áudio: $AUDIO_RESPONSE"
+    exit 1
+fi
+echo "✅ Criação de áudio funcionando"
+
+# 17. Informações finais
 echo ""
 echo "================================"
 echo "🎉 INSTALAÇÃO CONCLUÍDA!"
 echo "================================"
 echo ""
 echo "🔗 Endpoints disponíveis:"
+echo "   - POST http://SEU_IP:5005/create-audio"
 echo "   - POST http://SEU_IP:5005/create-video"
 echo "   - GET  http://SEU_IP:5005/health"
 echo "   - GET  http://SEU_IP:5005/status/<video_id>"
 echo ""
 echo "📂 Estrutura de pastas:"
+echo "   - /files/audios/      (áudios gerados)"
 echo "   - /files/imagens/     (para N8n salvar imagens)"
 echo "   - /files/videos/      (vídeos gerados)"
 echo "   - /files/fonts/       (fontes)"
 echo ""
 echo "🎬 Como usar:"
+echo "   # Criar áudio:"
+echo "   curl -X POST http://SEU_IP:5005/create-audio \\"
+echo "     -H 'Content-Type: application/json' \\"
+echo "     -d '{\"id\": \"audio001\", \"text\": \"Seu texto aqui\"}'"
+echo ""
+echo "   # Criar vídeo:"
 echo "   curl -X POST http://SEU_IP:5005/create-video \\"
 echo "     -H 'Content-Type: application/json' \\"
-echo "     -d '{\"id\": \"teste001\", \"text\": \"Seu texto aqui\"}'"
+echo "     -d '{\"id\": \"video001\", \"text\": \"Seu texto aqui\"}'"
 echo ""
 echo "📊 Status do serviço:"
 systemctl status video-automation --no-pager -l
