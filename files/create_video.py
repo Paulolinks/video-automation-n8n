@@ -75,47 +75,54 @@ def create_video(video_id):
     
     print(f"⏱️ Áudio: {audio_duration:.2f}s | Por imagem: {img_duration:.2f}s")
     
-    # Processar imagens
-    print("🖼️ Processando...")
-    img_clips = []
+    # Processar imagens - MÉTODO ALTERNATIVO usando ffmpeg diretamente
+    print("🖼️ Processando imagens com ffmpeg...")
     
-    for i, img_path in enumerate(img_files):
-        try:
-            img_clip = ImageClip(img_path).set_duration(img_duration).set_fps(FPS)
-            img_clip = img_clip.resize(height=VIDEO_HEIGHT)
-            img_clip = img_clip.on_color(
-                size=(VIDEO_WIDTH, VIDEO_HEIGHT),
-                color=(0, 0, 0),
-                pos="center"
-            ).set_fps(FPS)
-            img_clips.append(img_clip)
-            print(f"   ✓ {i+1}/{len(img_files)}")
-        except Exception as e:
-            print(f"   ⚠️ Pulou {i+1}: {e}")
+    # Criar arquivo de lista para ffmpeg
+    import subprocess
+    filelist_path = os.path.join(VIDEOS_DIR, f"filelist_{video_id}.txt")
     
-    if not img_clips:
-        raise ValueError("❌ Nenhuma imagem processada")
+    with open(filelist_path, 'w') as f:
+        for img_path in img_files:
+            f.write(f"file '{img_path}'\n")
+            f.write(f"duration {img_duration}\n")
+        # Adiciona última imagem novamente para fechar o loop
+        f.write(f"file '{img_files[-1]}'\n")
     
-    # Concatenar
-    print("🔗 Concatenando...")
-    video = concatenate_videoclips(img_clips, method="compose").set_fps(FPS)
+    print(f"⏱️ Cada imagem: {img_duration:.2f}s")
     
-    # Renderizar vídeo SEM áudio primeiro (MoviePy tem bug com áudio)
-    print("⏳ Renderizando vídeo (sem áudio)...")
+    # Renderizar vídeo SEM áudio usando ffmpeg diretamente
+    print("⏳ Renderizando vídeo com ffmpeg...")
     temp_video = video_path.replace('.mp4', '_temp.mp4')
-    video.write_videofile(
-        temp_video,
-        fps=FPS,
-        codec='libx264',
-        preset='ultrafast',
-        threads=4,
-        verbose=False,
-        logger=None
-    )
+    
+    # Comando ffmpeg para criar vídeo a partir das imagens
+    ffmpeg_cmd = [
+        'ffmpeg', '-y',
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', filelist_path,
+        '-vf', f'scale={VIDEO_WIDTH}:{VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,pad={VIDEO_WIDTH}:{VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1',
+        '-r', str(FPS),
+        '-c:v', 'libx264',
+        '-preset', 'ultrafast',
+        '-pix_fmt', 'yuv420p',
+        temp_video
+    ]
+    
+    result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f"❌ Erro ffmpeg (vídeo): {result.stderr}")
+        raise Exception("Falha ao criar vídeo com ffmpeg")
+    
+    # Limpar arquivo de lista
+    try:
+        os.remove(filelist_path)
+    except:
+        pass
     
     # Adicionar áudio usando ffmpeg diretamente
     print("🎵 Adicionando áudio com ffmpeg...")
-    import subprocess
     result = subprocess.run([
         'ffmpeg', '-i', temp_video, '-i', audio_path,
         '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
