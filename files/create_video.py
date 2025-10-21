@@ -22,16 +22,30 @@ def sanitize_image_files():
     for fname in os.listdir(IMGS_DIR):
         if not os.path.isfile(os.path.join(IMGS_DIR, fname)):
             continue
+        
+        # Limpar caracteres corrompidos específicos do N8n
         clean = fname.replace('\n', '').replace('\r', '').replace("'", "").strip()
+        # Remover $'\n\n' literal do nome
+        clean = clean.replace("$'\\n\\n'", "")
+        # Remover outros caracteres estranhos
+        clean = clean.replace("$'", "").replace("'", "")
+        # Remover espaços extras e caracteres especiais
+        clean = clean.strip().replace(" ", "_")
+        
         old_path = os.path.join(IMGS_DIR, fname)
         new_path = os.path.join(IMGS_DIR, clean)
+        
         if os.path.getsize(old_path) == 0:
             os.remove(old_path)
+            print(f"🗑️ Removido arquivo vazio: {fname}")
             continue
+            
         if old_path != new_path and clean:
             try:
                 os.rename(old_path, new_path)
-            except:
+                print(f"✅ Renomeado: {fname} -> {clean}")
+            except Exception as e:
+                print(f"❌ Erro ao renomear {fname}: {e}")
                 pass
     print("✅ Limpeza concluída")
 
@@ -39,6 +53,9 @@ def create_video(video_id):
     print(f"\n{'='*60}")
     print(f"🎬 VÍDEO - ID: {video_id}")
     print(f"{'='*60}\n")
+    
+    # LIMPEZA DE IMAGENS PRIMEIRO!
+    sanitize_image_files()
     
     audio_path = os.path.join(AUDIOS_DIR, f"audio_{video_id}.wav")
     video_path = os.path.join(VIDEOS_DIR, f"video_{video_id}.mp4")
@@ -48,7 +65,13 @@ def create_video(video_id):
     
     print(f"🎵 Áudio: {audio_path}")
     
-    sanitize_image_files()
+    # Debug: mostrar arquivos na pasta
+    print(f"📁 Pasta imagens: {IMGS_DIR}")
+    if os.path.exists(IMGS_DIR):
+        all_files = os.listdir(IMGS_DIR)
+        print(f"📋 Arquivos na pasta: {all_files}")
+    else:
+        print("❌ Pasta imagens não existe!")
     
     img_files = sorted([
         os.path.join(IMGS_DIR, f) for f in os.listdir(IMGS_DIR)
@@ -58,7 +81,9 @@ def create_video(video_id):
     if not img_files:
         raise ValueError("❌ Nenhuma imagem encontrada")
     
-    print(f"🖼️ {len(img_files)} imagens")
+    print(f"🖼️ {len(img_files)} imagens encontradas:")
+    for img in img_files:
+        print(f"  - {os.path.basename(img)}")
     
     # Limpar vídeos antigos
     for old in os.listdir(VIDEOS_DIR):
