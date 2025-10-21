@@ -360,6 +360,78 @@ def download_video(filename):
         return send_file(file_path, as_attachment=True)
     return jsonify({"error": "Arquivo não encontrado"}), 404
 
+@app.route('/clean-images', methods=['POST'])
+def clean_images_endpoint():
+    """
+    Endpoint para limpar imagens corrompidas
+    
+    Retorna:
+    {
+        "status": "success",
+        "message": "Limpeza concluída",
+        "cleaned_count": 5,
+        "removed_count": 0
+    }
+    """
+    try:
+        # Executa o script de limpeza
+        CLEAN_SCRIPT = os.path.join(BASE_DIR, "clean_images.py")
+        
+        if not os.path.exists(CLEAN_SCRIPT):
+            return jsonify({
+                "status": "error",
+                "message": f"Script de limpeza não encontrado: {CLEAN_SCRIPT}"
+            }), 400
+        
+        result = subprocess.run([
+            PYTHON_PATH,
+            CLEAN_SCRIPT
+        ], capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0:
+            # Extrair informações do output
+            output_lines = result.stdout.split('\n')
+            cleaned_count = 0
+            removed_count = 0
+            
+            for line in output_lines:
+                if "Arquivos limpos:" in line:
+                    cleaned_count = int(line.split(":")[1].strip())
+                elif "Arquivos removidos:" in line:
+                    removed_count = int(line.split(":")[1].strip())
+            
+            print(f"🧹 Limpeza de imagens executada com sucesso!")
+            print(f"📊 Limpos: {cleaned_count}, Removidos: {removed_count}")
+            
+            return jsonify({
+                "status": "success",
+                "message": "Limpeza de imagens concluída com sucesso!",
+                "cleaned_count": cleaned_count,
+                "removed_count": removed_count,
+                "output": result.stdout
+            }), 200
+        else:
+            print(f"❌ Erro na limpeza de imagens:")
+            print(f"STDOUT: {result.stdout}")
+            print(f"STDERR: {result.stderr}")
+            
+            return jsonify({
+                "status": "error",
+                "message": f"Erro na limpeza: {result.stderr or result.stdout}"
+            }), 400
+            
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "status": "error",
+            "message": "Timeout - limpeza demorou mais que 1 minuto"
+        }), 400
+    except Exception as e:
+        print(f"❌ Erro inesperado na limpeza: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Erro no servidor: {str(e)}"
+        }), 500
+
 # ========================================
 # LIMPEZA PERIÓDICA
 # ========================================
@@ -391,6 +463,7 @@ if __name__ == '__main__':
     print(f"🔗 Endpoints disponíveis:")
     print(f"   - POST /create-audio")
     print(f"   - POST /create-video")
+    print(f"   - POST /clean-images")
     print(f"   - GET /status/<id>")
     print(f"   - GET /health")
     print(f"   - GET /download/audios/<filename>")
